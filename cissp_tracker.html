@@ -329,6 +329,89 @@ details.study-plan[open] > summary::before { transform: rotate(90deg); }
 .btn-cancel:hover { background: var(--hover); color: var(--text); }
 .btn-save { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .btn-save:hover { background: #274fbb; }
+
+/* ============================================================
+   MOBILE — phones only (≤480px CSS width; iPhone 16 Pro Max = 440px).
+   The browser applies these automatically based on viewport width, so
+   the same file serves phone and computer; ≥481px (iPad, desktop) is
+   completely unaffected. No sync/data logic is touched.
+   ============================================================ */
+@media (max-width: 480px) {
+  /* --- Layout: one page scroller; sidebar becomes a horizontal tab bar --- */
+  body { overflow-x: hidden; }
+  .layout { display: block; height: auto; }
+  .main { overflow-y: visible; padding: 16px 12px 48px; }
+  .sidebar {
+    width: 100%; flex-direction: row; align-items: stretch;
+    overflow-x: auto; overflow-y: hidden; padding: 6px 8px; gap: 4px;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  .side-label, .side-foot { display: none; }
+  .nav-btn { width: auto; flex: 1 0 auto; justify-content: center; gap: 6px; min-height: 44px; padding: 10px 12px; }
+
+  /* --- Header: wrap into rows instead of clipping off-screen --- */
+  .header { height: auto; min-height: 54px; flex-wrap: wrap; padding: 10px 12px; gap: 8px 10px; }
+  .hdr-spacer { display: none; }
+  .logo { margin-right: auto; }
+  .sync-pill { padding: 14px 14px; }
+  .hdr-btn { padding: 14px 14px; }
+  .hdr-progress { order: 5; flex-basis: 100%; max-width: none; }
+  .countdown { order: 6; }
+  .hdr-dates { order: 7; flex-basis: 100%; justify-content: space-between; }
+  .hdr-sep { display: none; }
+  .hdr-dates input[type="date"] { flex: 1; width: auto; min-height: 40px; }
+  .banner { flex-wrap: wrap; }
+
+  /* --- Sync dialog: top-aligned (visible above the iOS keyboard), stacked buttons --- */
+  .modal-overlay { align-items: flex-start; padding: 16px; overflow-y: auto; }
+  .modal { max-width: 100%; margin: 8px 0 24px; }
+  .modal-actions { flex-wrap: wrap; }
+  .modal-actions .btn { flex: 1 1 100%; min-height: 44px; }
+  .modal-actions .btn-save { order: -1; }
+
+  /* --- Touch targets (≥44px effective) --- */
+  .item input[type="checkbox"], .plan-row input[type="checkbox"],
+  .daily-anki input[type="checkbox"] { width: 22px; height: 22px; }
+  .mini { padding: 10px 12px; font-size: 0.78rem; }
+  .btn-small { padding: 11px 14px; }
+  .star { font-size: 1.4rem; padding: 4px 5px; }
+  .test-del { padding: 10px; font-size: 1.1rem; }
+  .csec > summary { padding: 12px 2px; }
+  button, summary, .star { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+  /* --- Task rows: text on line 1, schedule controls on line 2 --- */
+  .item { flex-wrap: wrap; padding: 10px 0; row-gap: 6px; }
+  .item-text { flex: 1 1 calc(100% - 70px); min-width: 200px; }
+  .item-sched { flex-basis: 100%; justify-content: flex-end; gap: 8px; }
+  .item-sched input[type="date"] { flex: 1; max-width: 180px; }
+  .plan-row { flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; row-gap: 6px; }
+  .plan-actions { flex-basis: 100%; justify-content: flex-end; }
+  .plan-actions input[type="date"] { flex: 1; max-width: 180px; }
+
+  /* --- Summary & Practice Tests reflow --- */
+  .dprow { flex-wrap: wrap; row-gap: 4px; }
+  .dprow .nm, .dom-row .nm { width: 100%; }
+  .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .test-row { grid-template-columns: auto 1fr auto; }
+  .test-row textarea { grid-column: 1 / -1; }
+  .test-form-grid .tf-field { flex: 1 1 45%; }
+  .test-form-grid .btn-add { flex: 1 1 100%; min-height: 44px; }
+
+  /* --- Typography: 16px inputs stop iOS zoom-on-focus (incl. sync token field) --- */
+  .main input, .main select, .main textarea,
+  .hdr-dates input, .modal-input { font-size: 16px; }
+  .meta-label, .stat-label, .modal-label { font-size: 0.72rem; }
+  .kind-tag, .dom-chip { font-size: 0.7rem; }
+  .plan-when, .csec-prog, .res-sub { font-size: 0.78rem; }
+}
+
+/* Smaller iPhones (SE / mini / 13–15 non-Plus): declutter only */
+@media (max-width: 390px) {
+  .prog-text { display: none; }
+  .res-bar { display: none; }
+  .dom-rev { display: none; }
+  .main { padding: 14px 10px 44px; }
+}
 </style>
 </head>
 <body>
