@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CISSP Study Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f6f6f7;
+  --surface:  #ffffff;
+  --text:     #1b1b1d;
+  --muted:    #6c6c72;
+  --faint:    #9a9aa1;
+  --border:   #e6e6e9;
+  --border-2: #d6d6da;
+  --hover:    #f1f1f3;
+  --accent:   #2f5dd6;
+  --good:     #1f7a44;
+  --mid:      #9a6a00;
+  --low:      #b4452f;
+  --radius:   8px;
+}
+
+html, body { height: 100%; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: #d2d2d6; border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+input, textarea, button, select { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* ===== HEADER ===== */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.logo { font-size: 0.95rem; font-weight: 700; white-space: nowrap; }
+.logo span { color: var(--muted); font-weight: 500; }
+.hdr-progress { flex: 1; min-width: 90px; display: flex; align-items: center; gap: 10px; max-width: 340px; }
+.prog-track { flex: 1; height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.prog-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s ease; }
+.prog-text { font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+.prog-text strong { color: var(--text); font-weight: 600; }
+.hdr-spacer { flex: 1; }
+.countdown { font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+.countdown strong { color: var(--text); }
+.countdown:empty { display: none; }
+.hdr-dates { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+.hdr-dates input[type="date"] {
+  background: var(--surface); border: 1px solid var(--border-2); color: var(--text);
+  border-radius: 6px; padding: 3px 7px; font-size: 0.72rem; width: 122px;
+}
+.hdr-sep { color: var(--faint); }
+.hdr-btn {
+  border: 1px solid var(--border-2); background: var(--surface); color: var(--muted);
+  border-radius: 6px; padding: 4px 11px; font-size: 0.72rem; font-weight: 500; transition: background 0.12s, color 0.12s;
+}
+.hdr-btn:hover { background: var(--hover); color: var(--text); }
+
+/* ===== BACKUP BANNER ===== */
+.banner {
+  background: #fff8e6; border-bottom: 1px solid #f0e2bb; color: #7a5d10;
+  padding: 7px 20px; font-size: 0.74rem; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.banner:empty { display: none; }
+.banner button { border: 1px solid #e3cf94; background: #fcefcf; color: #7a5d10; border-radius: 5px; padding: 2px 10px; font-size: 0.7rem; font-weight: 600; }
+.banner .x { border: none; background: none; font-size: 1rem; color: #b09444; padding: 0 4px; }
+
+/* ===== LAYOUT ===== */
+.layout { display: flex; height: calc(100vh - 54px); }
+.sidebar {
+  width: 216px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
+  padding: 14px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px;
+}
+.side-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--faint); padding: 8px 8px 4px; }
+.nav-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; padding: 8px 10px; border: none; background: none; border-radius: 6px;
+  text-align: left; font-size: 0.82rem; color: var(--muted); transition: background 0.12s, color 0.12s;
+}
+.nav-btn:hover { background: var(--hover); color: var(--text); }
+.nav-btn.active { background: var(--hover); color: var(--text); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-count { font-size: 0.68rem; font-weight: 600; color: var(--muted); background: var(--border); border-radius: 99px; padding: 0 7px; min-width: 18px; text-align: center; }
+.nav-count.warn { color: var(--low); background: #f6e3de; }
+.side-foot { margin-top: auto; padding: 10px 8px 4px; font-size: 0.66rem; color: var(--faint); line-height: 1.5; }
+
+/* ===== MAIN ===== */
+.main { flex: 1; overflow-y: auto; padding: 26px 30px 60px; }
+.wrap { max-width: 940px; margin: 0 auto; }
+.view-head { margin-bottom: 20px; }
+.view-title { font-size: 1.25rem; font-weight: 700; }
+.view-sub { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+
+/* ===== TODAY ===== */
+.daily-panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 18px; margin-bottom: 18px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap;
+}
+.daily-anki { display: flex; align-items: center; gap: 9px; }
+.daily-anki input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
+.daily-anki label { font-size: 0.86rem; font-weight: 500; cursor: pointer; }
+.streak { font-size: 0.74rem; color: var(--muted); }
+.streak strong { color: var(--text); }
+.daily-hours { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--muted); }
+.num-input { width: 70px; border: 1px solid var(--border-2); border-radius: 6px; padding: 5px 8px; text-align: center; font-weight: 600; background: var(--surface); }
+.num-input:focus { outline: none; border-color: var(--accent); }
+
+.plan-group { margin-bottom: 22px; }
+.plan-group-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.plan-group-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+.plan-group-title.warn { color: var(--low); }
+.plan-group-count { font-size: 0.72rem; color: var(--muted); }
+.plan-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.plan-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-top: 1px solid var(--border); }
+.plan-row:first-child { border-top: none; }
+.plan-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+.res-tag { font-size: 0.64rem; font-weight: 700; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.4px; }
+.plan-text { flex: 1; min-width: 0; font-size: 0.85rem; }
+.plan-row.done .plan-text { text-decoration: line-through; color: var(--faint); }
+.plan-when { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+.plan-when.warn { color: var(--low); }
+.plan-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.plan-actions input[type="date"] { border: 1px solid var(--border); border-radius: 5px; padding: 3px 6px; font-size: 0.72rem; color: var(--muted); width: 130px; }
+.mini { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 5px; padding: 3px 7px; font-size: 0.68rem; }
+.mini:hover { background: var(--hover); color: var(--text); }
+.mini.del { color: var(--faint); padding: 3px 8px; }
+.mini.del:hover { color: var(--low); }
+.empty-note { font-size: 0.82rem; color: var(--muted); padding: 14px 2px; }
+.empty-note a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+/* ===== CURRICULUM ===== */
+.resource {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 14px; overflow: hidden;
+}
+.resource > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+}
+.resource > summary::-webkit-details-marker { display: none; }
+.resource > summary::before { content: "\203A"; color: var(--faint); font-size: 1.1rem; transition: transform 0.15s; width: 10px; flex-shrink: 0; }
+.resource[open] > summary::before { transform: rotate(90deg); }
+.res-name { font-weight: 600; font-size: 0.95rem; flex: 1; min-width: 0; }
+.res-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+.res-bar { width: 90px; height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; flex-shrink: 0; }
+.res-bar > i { display: block; height: 100%; background: #b9bcc4; border-radius: 99px; }
+.res-bar.full > i { background: var(--good); }
+.resource-body { border-top: 1px solid var(--border); padding: 6px 18px 16px; }
+
+.csec { border-top: 1px solid var(--border); }
+.csec:first-child { border-top: none; }
+.csec > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 10px; padding: 9px 2px;
+  font-size: 0.82rem; font-weight: 600;
+}
+.csec > summary::-webkit-details-marker { display: none; }
+.csec > summary::before { content: "\203A"; color: var(--faint); font-size: 1rem; transition: transform 0.15s; width: 9px; flex-shrink: 0; }
+.csec[open] > summary::before { transform: rotate(90deg); }
+.csec-prog { margin-left: auto; font-size: 0.7rem; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.csec-prog.full { color: var(--good); }
+.dom-chip { font-size: 0.62rem; font-weight: 700; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 0 5px; }
+
+ul.items { list-style: none; padding-bottom: 8px; }
+.item { display: flex; align-items: center; gap: 10px; padding: 6px 0 6px 19px; }
+.item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+.item-text { flex: 1; min-width: 0; font-size: 0.84rem; }
+.item.done .item-text { text-decoration: line-through; color: var(--faint); }
+.kind-tag { font-size: 0.62rem; font-weight: 600; color: var(--mid); border: 1px solid #ecd9a8; background: #fdf6e3; border-radius: 99px; padding: 0 7px; flex-shrink: 0; }
+.kind-tag.exam { color: var(--low); border-color: #e6c6bd; background: #faf0ed; }
+.item-sched { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.item-sched input[type="date"] { border: 1px solid var(--border); border-radius: 5px; padding: 2px 6px; font-size: 0.7rem; color: var(--muted); width: 126px; }
+.item-sched input[type="date"]:focus { outline: none; border-color: var(--accent); }
+
+.add-row { display: flex; gap: 8px; margin: 10px 0 4px; }
+.add-row input { flex: 1; border: 1px solid var(--border-2); border-radius: 6px; padding: 7px 10px; font-size: 0.82rem; background: var(--surface); }
+.add-row input:focus { outline: none; border-color: var(--accent); }
+.add-row input::placeholder { color: var(--faint); }
+.add-row button { border: 1px solid var(--border-2); background: var(--surface); border-radius: 6px; padding: 7px 14px; font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+.add-row button:hover { background: var(--hover); color: var(--text); }
+
+/* ===== PRACTICE TESTS ===== */
+.test-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 18px; }
+.test-form-grid { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+.tf-field { display: flex; flex-direction: column; gap: 4px; }
+.meta-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--faint); }
+.tf-field input, .tf-field select { border: 1px solid var(--border-2); border-radius: 6px; padding: 6px 9px; font-size: 0.82rem; background: var(--surface); }
+.tf-field input:focus, .tf-field select:focus { outline: none; border-color: var(--accent); }
+.tf-field.grow { flex: 1; min-width: 160px; }
+.tf-field.grow input { width: 100%; }
+.btn-add { border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 6px; padding: 7px 16px; font-size: 0.8rem; font-weight: 600; }
+.btn-add:hover { background: #274fbb; }
+
+.test-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 10px; display: grid; grid-template-columns: auto auto 1fr auto; gap: 14px; align-items: start; }
+.test-score { font-size: 1.05rem; font-weight: 700; min-width: 52px; }
+.test-score.good { color: var(--good); }
+.test-score.mid { color: var(--mid); }
+.test-score.low { color: var(--low); }
+.test-meta { display: flex; flex-direction: column; gap: 2px; }
+.test-date { font-size: 0.78rem; font-weight: 600; }
+.test-focus { font-size: 0.72rem; color: var(--muted); }
+.test-row textarea { border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 0.8rem; resize: vertical; min-height: 36px; width: 100%; }
+.test-row textarea:focus { outline: none; border-color: var(--accent); }
+.test-del { border: none; background: none; color: var(--faint); font-size: 0.95rem; }
+.test-del:hover { color: var(--low); }
+
+/* ===== SUMMARY ===== */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.stat-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--faint); margin-bottom: 5px; }
+.stat-val { font-size: 1.5rem; font-weight: 700; }
+.stat-val small { font-size: 0.9rem; color: var(--muted); font-weight: 500; }
+.stat-val.good { color: var(--good); }
+.stat-val.mid { color: var(--mid); }
+.stat-val.low { color: var(--low); }
+.stat-sub { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 14px; }
+.panel-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 14px; }
+.dprow { display: flex; align-items: center; gap: 12px; margin-bottom: 9px; }
+.dprow:last-child { margin-bottom: 0; }
+.dprow .nm { width: 250px; flex-shrink: 0; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dprow .nm small { color: var(--muted); }
+.dprow .tk { flex: 1; height: 7px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.dprow .tk > i { display: block; height: 100%; background: #b9bcc4; border-radius: 99px; }
+.dprow .tk.full > i { background: var(--good); }
+.dprow .pc { width: 52px; text-align: right; font-size: 0.74rem; font-weight: 600; color: var(--muted); }
+
+.dom-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.dom-row:first-of-type { border-top: none; }
+.dom-row .nm { width: 230px; flex-shrink: 0; font-size: 0.8rem; }
+.stars { display: flex; gap: 2px; }
+.star { font-size: 1.05rem; color: var(--faint); line-height: 1; user-select: none; cursor: pointer; }
+.star.on { color: #c79a1e; }
+.dom-rev { font-size: 0.7rem; color: var(--muted); width: 78px; }
+.dom-rev.stale { color: var(--low); }
+.btn-small { border: 1px solid var(--border-2); background: var(--surface); color: var(--muted); border-radius: 6px; padding: 4px 10px; font-size: 0.7rem; font-weight: 500; transition: background 0.12s, color 0.12s, border-color 0.12s; }
+.btn-small:hover { background: var(--hover); color: var(--text); }
+.btn-small.on { border-color: #e0bdb2; background: #faf0ed; color: var(--low); }
+.dom-notes-input { flex-basis: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; font-size: 0.76rem; resize: vertical; min-height: 30px; }
+.dom-notes-input:focus { outline: none; border-color: var(--accent); }
+.dom-notes-input::placeholder { color: var(--faint); }
+
+.callout { display: flex; flex-direction: column; gap: 6px; }
+.callout .c-row { font-size: 0.8rem; display: flex; gap: 8px; }
+.callout .c-row .c-tag { color: var(--low); font-weight: 600; flex-shrink: 0; }
+.callout .ok { font-size: 0.82rem; color: var(--good); }
+
+.spark { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
+.spark .b { flex: 1; min-width: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.spark .b > i { width: 100%; max-width: 26px; background: #c2c5cd; border-radius: 3px 3px 0 0; min-height: 2px; }
+.spark .b.good > i { background: #9ec3a9; }
+.spark .b.low > i { background: #d8b1a6; }
+.spark .b > span { font-size: 0.6rem; color: var(--faint); }
+
+details.study-plan { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+details.study-plan > summary { list-style: none; cursor: pointer; padding: 14px 18px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+details.study-plan > summary::-webkit-details-marker { display: none; }
+details.study-plan > summary::before { content: "\203A"; color: var(--faint); font-size: 1.1rem; transition: transform 0.15s; }
+details.study-plan[open] > summary::before { transform: rotate(90deg); }
+.sp-body { padding: 4px 20px 20px; border-top: 1px solid var(--border); font-size: 0.84rem; line-height: 1.6; }
+.sp-body h4 { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 16px 0 6px; }
+.sp-body ol, .sp-body ul { margin: 0 0 4px 20px; }
+.sp-body li { margin-bottom: 4px; }
+.sp-body .ord { color: var(--muted); }
+
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.btn-ghost { border: 1px solid var(--border-2); background: var(--surface); color: var(--muted); border-radius: 6px; padding: 7px 14px; font-size: 0.78rem; font-weight: 500; }
+.btn-ghost:hover { background: var(--hover); color: var(--text); }
+.btn-ghost.danger:hover { border-color: #e0bdb2; color: var(--low); }
+</style>
+</head>
+<body>
+
+<div class="banner" id="banner"></div>
+
+<div class="header">
+  <div class="logo">CISSP <span>Tracker</span></div>
+  <div class="hdr-progress">
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="prog-text" id="prog-text"><strong>0%</strong></div>
+  </div>
+  <div class="countdown" id="countdown"></div>
+  <div class="hdr-spacer"></div>
+  <button class="hdr-btn" data-act="export">Export</button>
+  <button class="hdr-btn" data-act="import">Import</button>
+  <div class="hdr-dates">
+    <span>Start</span>
+    <input type="date" id="start-date">
+    <span class="hdr-sep">|</span>
+    <span>Exam</span>
+    <input type="date" id="exam-date">
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main"><div class="wrap" id="main"></div></div>
+</div>
+
+<script>
+// ============================================================
+// STATIC DATA
+// ============================================================
+const DOMAINS = [
+  { id:1, name:"Security & Risk Management",         weight:16 },
+  { id:2, name:"Asset Security",                     weight:10 },
+  { id:3, name:"Security Architecture & Engineering",weight:13 },
+  { id:4, name:"Communication & Network Security",   weight:13 },
+  { id:5, name:"Identity & Access Management",       weight:13 },
+  { id:6, name:"Security Assessment & Testing",      weight:12 },
+  { id:7, name:"Security Operations",                weight:13 },
+  { id:8, name:"Software Development Security",       weight:10 }
+];
+
+// Sybex ISC2 CISSP Official Study Guide, 10th edition — one read-task per chapter.
+const SYBEX = [
+  { ch:1,  d:1, t:"Security Governance Through Principles and Policies" },
+  { ch:2,  d:1, t:"Personnel Security and Risk Management Concepts" },
+  { ch:3,  d:1, t:"Business Continuity Planning" },
+  { ch:4,  d:1, t:"Laws, Regulations, and Compliance" },
+  { ch:5,  d:2, t:"Protecting Security of Assets" },
+  { ch:6,  d:3, t:"Cryptography and Symmetric Key Algorithms" },
+  { ch:7,  d:3, t:"PKI and Cryptographic Applications" },
+  { ch:8,  d:3, t:"Principles of Security Models, Design, and Capabilities" },
+  { ch:9,  d:3, t:"Security Vulnerabilities, Threats, and Countermeasures" },
+  { ch:10, d:3, t:"Physical Security Requirements" },
+  { ch:11, d:4, t:"Secure Network Architecture and Components" },
+  { ch:12, d:4, t:"Secure Communications and Network Attacks" },
+  { ch:13, d:5, t:"Managing Identity and Authentication" },
+  { ch:14, d:5, t:"Controlling and Monitoring Access" },
+  { ch:15, d:6, t:"Security Assessment and Testing" },
+  { ch:16, d:7, t:"Managing Security Operations" },
+  { ch:17, d:7, t:"Preventing and Responding to Incidents" },
+  { ch:18, d:7, t:"Disaster Recovery Planning" },
+  { ch:19, d:7, t:"Investigations and Ethics" },
+  { ch:20, d:8, t:"Software Development Security" },
+  { ch:21, d:8, t:"Malicious Code and Application Attacks" }
+];
+
+// Jason Dion — ISC2 CISSP Full Course & Practice Exam (Udemy).
+// Curriculum as listed on Udemy (35 sections, 295 items). "Q|" = checkpoint quiz, "E|" = practice exam.
+const DION = [
+  { t:"Introduction", d:0, v:[
+    "Introduction",
+    "Avoid These 6 CISSP Study Mistakes That Sabotage Success",
+    "Top Exam Strategies: What ISC2 Doesn't Tell You!",
+    "Download your free study guide",
+    "Q|Checkpoint: Introduction"
+  ]},
+  { t:"Security Management Concepts", d:1, v:[
+    "Security Management Concepts",
+    "Code of Ethics (OBJ. 1.1)",
+    "Information Security Concepts (OBJ. 1.2)",
+    "Aligning Security And The Organization (OBJ. 1.3)",
+    "Organizational Roles and Responsibilities (OBJ. 1.3)",
+    "Security Awareness Training And Education (OBJ. 1.12)",
+    "Social Engineering (OBJ. 1.12)",
+    "Personnel Security Policies (OBJ. 1.8)",
+    "Personnel Safety and Security (OBJ. 7.15)",
+    "Q|Checkpoint: Security Management Concepts"
+  ]},
+  { t:"Security Governance and Compliance", d:1, v:[
+    "Security Governance and Compliance",
+    "Due Care and Due Diligence (OBJ. 1.3)",
+    "Important Laws and Regulations (OBJ. 1.4)",
+    "Licensing and Property Rights (OBJ. 1.4)",
+    "Export and Import Controls (OBJ. 1.4)",
+    "Cybercrime And Data Breaches (OBJ. 1.4)",
+    "Determine Compliance Requirements (OBJ. 1.4)",
+    "Security Compliance Artifacts (OBJ. 1.6)",
+    "Q|Checkpoint: Security Governance and Compliance"
+  ]},
+  { t:"Risk Management", d:1, v:[
+    "Risk Management",
+    "Risk Management Concepts (OBJ. 1.9)",
+    "Risk Response And Monitoring (OBJ. 1.9)",
+    "Controls and Countermeasures (OBJ. 1.9)",
+    "Continuous Monitoring (OBJ. 1.9, 7.2)",
+    "Supply Chain Risk Management (OBJ. 1.11)",
+    "Q|Checkpoint: Risk Management"
+  ]},
+  { t:"Risk Frameworks", d:1, v:[
+    "Risk Frameworks",
+    "Risk Frameworks (OBJ. 1.9)",
+    "NIST Cybersecurity Framework (OBJ. 1.9)",
+    "ISO/IEC 27001 (OBJ. 1.9)",
+    "Understanding PCI DSS (OBJ. 1.9)",
+    "Understanding SABSA (OBJ. 1.9)",
+    "Q|Checkpoint: Risk Frameworks"
+  ]},
+  { t:"Risk Assessments", d:1, v:[
+    "Risk Assessments",
+    "Understanding Risk Assessments (OBJ. 1.9)",
+    "Conducting Risk Assessments (OBJ. 1.9)",
+    "Control Assessments (OBJ. 1.9)",
+    "Privacy Control Assessments (OBJ. 1.9)",
+    "PCI DSS Assessments (OBJ. 1.9)",
+    "Threat Modeling Concepts (OBJ. 1.10)",
+    "Threat Modeling Methodologies (OBJ. 1.10)",
+    "Q|Checkpoint: Risk Assessments"
+  ]},
+  { t:"Asset Security", d:2, v:[
+    "Asset Security",
+    "Classifying Data And Assets (OBJ. 2.1)",
+    "Information and Asset Handling Requirements (OBJ. 2.2)",
+    "Managing System Assets (OBJ. 2.3)",
+    "Data Roles And Responsibilities (OBJ. 2.4)",
+    "Managing The Data Lifecycle (OBJ. 2.4)",
+    "The Information System Lifecycle - Part 1 (OBJ. 3.10)",
+    "The Information System Lifecycle - Part 2 (OBJ. 3.10)",
+    "Q|Checkpoint: Asset Security"
+  ]},
+  { t:"Data Security Controls", d:2, v:[
+    "Data Security Controls",
+    "Understanding Data States (OBJ. 2.6, 7.5)",
+    "Security Control Frameworks (OBJ. 1.3)",
+    "Determining Security Controls (OBJ. 2.6)",
+    "Selecting Security Controls (OBJ. 2.6, 3.3)",
+    "Data Protection Methods (OBJ. 2.6)",
+    "Data Retention Requirements (OBJ. 2.4)",
+    "Managing Data Remanence (OBJ. 2.4)",
+    "Q|Checkpoint: Data Security Controls"
+  ]},
+  { t:"Secure Design Principles", d:3, v:[
+    "Secure Design Principles",
+    "Understanding Secure Design (OBJ. 3.5)",
+    "Secure Design Principles (OBJ. 3.1)",
+    "Zero Trust Architecture (OBJ. 3.1, 5.4)",
+    "Privacy By Design (OBJ. 3.1)",
+    "System Security Capabilities (OBJ. 3.4)",
+    "Understanding Security Models (OBJ. 3.2)",
+    "Security Models - Part 1 (OBJ. 3.2)",
+    "Security Models - Part 2 (OBJ. 3.2)",
+    "Q|Checkpoint: Secure Design Principles"
+  ]},
+  { t:"Secure Architecture Design", d:3, v:[
+    "Secure Architecture Design",
+    "System Architectures (OBJ. 3.5)",
+    "Database Systems (OBJ. 3.5)",
+    "Common Criteria (OBJ. 3.5)",
+    "Industrial Control Systems (OBJ. 3.5)",
+    "Secure Access Service Edge (OBJ. 3.1)",
+    "Internet of Things (OBJ. 3.5)",
+    "Microservices (OBJ. 3.5)",
+    "Embedded Systems (OBJ. 3.5)",
+    "High-Performance Computing (OBJ. 3.5)",
+    "Edge Computing Systems (OBJ. 3.5)",
+    "Q|Checkpoint: Secure Architecture Design"
+  ]},
+  { t:"Virtualization and Cloud Computing", d:3, v:[
+    "Virtualization and Cloud Computing",
+    "Virtualized Systems (OBJ. 3.5)",
+    "Containerization (OBJ. 3.5)",
+    "Cloud Deployment Models (OBJ. 3.5)",
+    "Cloud Service Models (OBJ. 3.5)",
+    "Shared Responsibility Model (OBJ. 3.5)",
+    "Virtual Private Cloud (OBJ. 4.1)",
+    "Serverless Computing (OBJ. 3.5)",
+    "Q|Checkpoint: Virtualization and Cloud Computing"
+  ]},
+  { t:"Cryptographic Solutions", d:3, v:[
+    "Cryptographic Solutions",
+    "Understanding Cryptography (OBJ. 3.6)",
+    "Cryptographic Methods (OBJ. 3.6)",
+    "Symmetric Encryption",
+    "Asymmetric Encryption",
+    "Quantum Cryptography (OBJ. 3.6)",
+    "Hash Functions (OBJ. 3.6)",
+    "Cryptographic Key Management (OBJ. 3.6)",
+    "Digital Signatures and Certificates (OBJ. 3.6)",
+    "Public Key Infrastructure (OBJ. 3.6)",
+    "Q|Checkpoint: Cryptographic Solutions"
+  ]},
+  { t:"Cryptanalytic Attacks", d:3, v:[
+    "Cryptanalytic Attacks",
+    "Vulnerabilities In Cryptographic Systems (OBJ. 3.5)",
+    "Cryptanalytic Attacks - Part 1 (OBJ. 3.7)",
+    "Cryptanalytic Attacks - Part 2 (OBJ. 3.7)",
+    "Cryptanalytic Attacks - Part 3 (OBJ. 3.7)",
+    "Q|Checkpoint: Cryptanalytic Attacks"
+  ]},
+  { t:"Physical Security", d:3, v:[
+    "Physical Security",
+    "Site Design Principles (OBJ. 3.8)",
+    "Facility Design Principles (OBJ. 3.9)",
+    "Facility Security Controls (OBJ. 3.9)",
+    "Facility Infrastructure Security (OBJ. 3.9)",
+    "Fire Prevention, Detection, and Suppression (OBJ. 3.9)",
+    "Physical Security Controls (OBJ. 7.14)",
+    "Q|Checkpoint: Physical Security"
+  ]},
+  { t:"Network Components", d:4, v:[
+    "Network Components",
+    "Hardware Operations (OBJ. 4.2)",
+    "Network Infrastructure Operations (OBJ. 4.2)",
+    "Transmission Media - Part 1 (OBJ. 4.2)",
+    "Transmission Media - Part 2 (OBJ. 4.2)",
+    "Network Monitoring (OBJ. 4.1)",
+    "Q|Checkpoint: Network Components"
+  ]},
+  { t:"Networking Concepts", d:4, v:[
+    "Networking Concepts",
+    "TCP/IP and OSI Models (OBJ. 4.1)",
+    "IP Networking (OBJ. 4.1)",
+    "LAN Communications (OBJ. 4.1)",
+    "Communication Protocols (OBJ. 4.1)",
+    "Multilayer Protocols (OBJ. 4.1)",
+    "Converged Protocols (OBJ. 4.1)",
+    "Data Communications (OBJ. 4.3)",
+    "Virtualized Networks (OBJ. 4.3)",
+    "Q|Checkpoint: Networking Concepts"
+  ]},
+  { t:"Network Architectures", d:4, v:[
+    "Network Architectures",
+    "Content Distribution Networks (OBJ. 4.1)",
+    "Software Defined Networks (OBJ. 4.1)",
+    "Application Programming Interfaces (OBJ. 4.1)",
+    "Network Functions Virtualization (OBJ. 4.1)",
+    "Q|Checkpoint: Network Architectures"
+  ]},
+  { t:"Secure Network Design", d:4, v:[
+    "Secure Network Design",
+    "Transport Architecture (OBJ. 4.1)",
+    "Performance Metrics (OBJ. 4.1)",
+    "Network Traffic Flows (OBJ. 4.1)",
+    "Physical Network Segmentation (OBJ. 4.1)",
+    "Logical Network Segmentation (OBJ. 4.1)",
+    "Micro-Segmentation (OBJ. 4.1)",
+    "Edge Networks (OBJ. 4.1)",
+    "Q|Checkpoint: Secure Network Design"
+  ]},
+  { t:"Network Security and Attacks", d:4, v:[
+    "Network Security and Attacks",
+    "Firewalls Concepts (OBJ. 7.7)",
+    "Types of Firewalls (OBJ. 7.7)",
+    "Firewall Architecture (OBJ. 7.7)",
+    "IP Security (OBJ. 4.1)",
+    "Endpoint Security (OBJ. 4.2)",
+    "Network Access Control (OBJ. 4.2)",
+    "Reconnaissance Attacks (OBJ. 4.2)",
+    "Spoofing and Poisoning Attacks (OBJ. 4.2)",
+    "Denial of Service Attacks (OBJ. 4.2)",
+    "Q|Checkpoint: Network Security and Attacks"
+  ]},
+  { t:"Secure Communications", d:4, v:[
+    "Secure Communications",
+    "Remote Access Security (OBJ. 4.3)",
+    "Multimedia Collaboration (OBJ. 4.3)",
+    "Voice Communications (OBJ. 4.3)",
+    "Email Security (OBJ. 4.3)",
+    "Backhaul Networks (OBJ. 4.3)",
+    "Q|Checkpoint: Secure Communications"
+  ]},
+  { t:"Wireless Networking", d:4, v:[
+    "Wireless Networking",
+    "Wireless Networks (OBJ. 4.1)",
+    "Wireless Network Modes (OBJ. 4.1)",
+    "Wireless Network Security (OBJ. 4.1)",
+    "Mobile Device Management (OBJ. 3.5, 4.1)",
+    "Q|Checkpoint: Wireless Networking"
+  ]},
+  { t:"Identity Management", d:5, v:[
+    "Identity Management",
+    "Establishing Identity (OBJ. 5.2)",
+    "Identity Management (OBJ. 5.2)",
+    "Federated Identity Management (OBJ. 5.6)",
+    "Delegated Identity Management (OBJ. 5.3)",
+    "Identity and Access Lifecycle (OBJ. 5.5)",
+    "Q|Checkpoint: Identity Management"
+  ]},
+  { t:"Authentication Mechanisms", d:5, v:[
+    "Authentication Mechanisms",
+    "Authentication Systems (OBJ. 5.6)",
+    "Authentication Factors (OBJ. 5.2)",
+    "Biometric Authentication (OBJ. 5.2)",
+    "Single Sign On (OBJ. 5.2)",
+    "OAuth and OIDC (OBJ. 5.6)",
+    "Kerberos (OBJ. 5.6)",
+    "Credential Management Systems (OBJ. 5.2)",
+    "Just-In-Time Access (OBJ. 5.2)",
+    "Access Control Models - Part 1 (OBJ. 5.4)",
+    "Access Control Models - Part 2 (OBJ. 5.4)",
+    "Q|Checkpoint: Authentication Mechanisms"
+  ]},
+  { t:"Access and Authorization", d:5, v:[
+    "Access and Authorization",
+    "Accountability (OBJ. 5.4)",
+    "Access Authorization (OBJ. 5.4)",
+    "Controlling Logical Access (OBJ. 5.1)",
+    "Session Management (OBJ. 5.2)",
+    "Password Attacks (OBJ. 5.2)",
+    "Q|Checkpoint: Access and Authorization"
+  ]},
+  { t:"Security Test and Assessment", d:6, v:[
+    "Security Test and Assessment",
+    "Security Test And Assessment Planning (OBJ. 6.1, 6.5)",
+    "Performance and Risk Indicators (OBJ. 6.3)",
+    "Collecting Security Data (OBJ. 6.3)",
+    "Account Management Data (OBJ. 6.3)",
+    "Verifying Training and Awareness (OBJ. 6.3)",
+    "Disaster Recovery and Business Continuity Data (OBJ. 6.3)",
+    "Q|Checkpoint: Security Test and Assessment"
+  ]},
+  { t:"Conduct Security Testing", d:6, v:[
+    "Conduct Security Testing",
+    "Vulnerability Assessments (OBJ. 6.2)",
+    "Vulnerability Scanning (OBJ. 6.2)",
+    "Penetration Testing (OBJ. 6.2)",
+    "Penetration Testing Phases (OBJ. 6.2)",
+    "Log Reviews (OBJ. 6.2)",
+    "Software Testing Methods (OBJ. 6.2)",
+    "Software Code Reviews (OBJ. 6.2)",
+    "Misuse Testing (OBJ. 6.2)",
+    "Interface Testing (OBJ. 6.2)",
+    "Compliance Testing (OBJ. 6.2)",
+    "Test Coverage Analysis (OBJ. 6.2)",
+    "Analyzing Test Results (OBJ. 6.4)",
+    "Q|Checkpoint: Conduct Security Testing"
+  ]},
+  { t:"Detective And Preventative Measures", d:7, v:[
+    "Detective And Preventative Measures",
+    "Security Operation Concepts (OBJ. 7.4)",
+    "Detective And Preventative Concepts (OBJ. 7.7)",
+    "IDS/IPS Systems (OBJ. 7.2)",
+    "Honeypots and Honeynets (OBJ. 7.7)",
+    "Malicious Software (OBJ. 7.7)",
+    "Anti-Malware (OBJ. 7.7)",
+    "Artificial Intelligence Tools (OBJ. 7.7)",
+    "Q|Checkpoint: Detective And Preventative Measures"
+  ]},
+  { t:"Logging and Monitoring", d:7, v:[
+    "Logging and Monitoring",
+    "Logging and Monitoring (OBJ. 7.2)",
+    "Security Information and Event Management (OBJ. 7.2)",
+    "Threat Intelligence (OBJ. 7.2)",
+    "MITRE ATT&CK Framework (OBJ. 7.2)",
+    "Cyber Kill Chain (OBJ. 7.2)",
+    "Security Orchestration, Automation and Response (OBJ. 7.2)",
+    "Behavior Analytics (OBJ. 7.2)",
+    "Q|Checkpoint: Logging and Monitoring"
+  ]},
+  { t:"Configuration Management", d:7, v:[
+    "Configuration Management Introduction",
+    "Configuration Management (OBJ. 7.3)",
+    "System Patch Management (OBJ. 7.8)",
+    "Change Control (OBJ. 7.9)",
+    "Software Configuration Management (OBJ. 8.1, 8.2)",
+    "Media Management (OBJ. 7.5)",
+    "Q|Checkpoint: Configuration Management"
+  ]},
+  { t:"Incident Management", d:7, v:[
+    "Incident Management Introduction",
+    "Incident Management (OBJ. 7.6)",
+    "Security Investigations (OBJ. 7.1)",
+    "Cyber Related Investigations (OBJ. 1.5)",
+    "Evidence Collection and Handling (OBJ. 7.1)",
+    "Digital Forensics (OBJ. 7.1)",
+    "Digital Forensic Incident Response (OBJ. 7.1)",
+    "Q|Checkpoint: Incident Management"
+  ]},
+  { t:"Business Continuity and Disaster Recovery", d:7, v:[
+    "Business Continuity and Disaster Recovery",
+    "Business Continuity Planning (OBJ. 1.7, 7.13)",
+    "Business Impact Analysis (OBJ. 1.7)",
+    "Disaster Recovery Planning (OBJ. 7.10)",
+    "Disaster Recovery Strategies (OBJ. 7.10)",
+    "Disaster Recovery Sites (OBJ. 7.10)",
+    "Data Backup Strategies (OBJ. 7.10)",
+    "Disaster Recovery Processes (OBJ. 7.11)",
+    "Disaster Recovery Testing (OBJ. 7.12)",
+    "Q|Checkpoint: Business Continuity and Disaster Recovery"
+  ]},
+  { t:"Software Development Security", d:8, v:[
+    "Software Development Security",
+    "Software Development Lifecycle (OBJ. 8.1)",
+    "Software Development Methodologies Part 1 (OBJ. 8.1)",
+    "Software Development Methodologies Part 2 (OBJ. 8.1)",
+    "Agile Development (OBJ. 8.1)",
+    "DevOps and DevSecOps (OBJ. 8.1, 8.2)",
+    "Software Maturity Models (OBJ. 8.1)",
+    "Software Operations And Maintenance (OBJ. 8.1)",
+    "Integrated Product Teams (OBJ. 8.1)",
+    "Code Repositories (OBJ. 8.2)",
+    "Q|Checkpoint: Software Development Security"
+  ]},
+  { t:"Application Security", d:8, v:[
+    "Application Security",
+    "Programming Languages (OBJ. 8.2)",
+    "Application Security Testing (OBJ. 8.2)",
+    "Software Assurance (OBJ. 8.3)",
+    "Acquired Software Security (OBJ. 8.4)",
+    "Application Attacks (OBJ. 8.5)",
+    "OWASP Top 10 Vulnerabilities - Part 1 (OBJ. 8.5)",
+    "OWASP Top 10 Vulnerabilities - Part 2 (OBJ. 8.5)",
+    "OWASP Top 10 Vulnerabilities - Part 3 (OBJ. 8.5)",
+    "Software API Security (OBJ. 8.5)",
+    "Secure Coding Practices (OBJ. 8.5)",
+    "Software-Defined Security (OBJ. 8.5)",
+    "Q|Checkpoint: Application Security"
+  ]},
+  { t:"Conclusion", d:0, v:[
+    "Conclusion",
+    "BONUS Lesson: Accelerate Your CISSP Success!"
+  ]},
+  { t:"Practice Exam", d:0, v:[
+    "E|Full-length Practice Exam"
+  ]}
+];
+
+const STALE_DAYS = 10;
+
+// Day ranges from the original 30-day tracker — used only when migrating very old (cissp_v3) data.
+const DOMAIN_DAYS = { 1:[1,2], 2:[3,4], 3:[5,6,7], 4:[8,9,10], 5:[11,12], 6:[13,14], 7:[15,16,17], 8:[18,19] };
+
+// ============================================================
+// STATE
+// ============================================================
+let state = null;
+
+function seedItems() {
+  const items = [];
+  SYBEX.forEach(c => {
+    items.push({ id:`sx-${c.ch}`, res:"sybex", sec:"Sybex OSG", domain:c.d, text:`Ch. ${c.ch} — ${c.t}`, kind:"read", done:false, doneDate:null, schedDate:null, custom:false });
+  });
+  DION.forEach((s, si) => {
+    s.v.forEach((raw, vi) => {
+      let kind = "video", text = raw;
+      if (raw.startsWith("Q|")) { kind = "quiz"; text = raw.slice(2); }
+      else if (raw.startsWith("E|")) { kind = "exam"; text = raw.slice(2); }
+      items.push({ id:`dn-${si}-${vi}`, res:"dion", sec:s.t, domain:s.d, text, kind, done:false, doneDate:null, schedDate:null, custom:false });
+    });
+  });
+  DOMAINS.forEach(dm => {
+    items.push({ id:`bp-${dm.id}-s`, res:"bp", sec:"CISSP Blueprint", domain:dm.id, text:`Read Blueprint scenarios — Domain ${dm.id} (${dm.name})`, kind:"read", done:false, doneDate:null, schedDate:null, custom:false });
+    items.push({ id:`bp-${dm.id}-q`, res:"bp", sec:"CISSP Blueprint", domain:dm.id, text:`Blueprint practice questions — Domain ${dm.id} (${dm.name})`, kind:"questions", done:false, doneDate:null, schedDate:null, custom:false });
+  });
+  return items;
+}
+function seedDomains() {
+  const d = {};
+  DOMAINS.forEach(dm => { d[dm.id] = { readiness:0, weak:false, notes:"", lastReviewed:null }; });
+  return d;
+}
+function freshState() {
+  return {
+    meta: { startDate:"", examTargetDate:"", lastBackup:null, activeView:"today", open:{}, migratedFrom:null, legacyHours:0 },
+    items: seedItems(),
+    days: {},
+    domains: seedDomains(),
+    tests: []
+  };
+}
+
+function ensureShape() {
+  if (!state.meta) state.meta = {};
+  if (!state.meta.open) state.meta.open = {};
+  if (!state.meta.activeView) state.meta.activeView = "today";
+  if (typeof state.meta.legacyHours !== "number") state.meta.legacyHours = 0;
+  if (!Array.isArray(state.items) || !state.items.length) state.items = seedItems();
+  if (!state.days) state.days = {};
+  if (!state.domains) state.domains = seedDomains();
+  DOMAINS.forEach(dm => { if (!state.domains[dm.id]) state.domains[dm.id] = { readiness:0, weak:false, notes:"", lastReviewed:null }; });
+  if (!Array.isArray(state.tests)) state.tests = [];
+}
+
+// ---- Migration: v4 (domain-subtopic checklist) -> v5 ----
+function migrateV4(v4) {
+  const v5 = freshState();
+  v5.meta.migratedFrom = (v4.meta && v4.meta.migratedFrom) ? v4.meta.migratedFrom + " > cissp_v4" : "cissp_v4";
+  v5.meta.startDate = v4.meta?.startDate || "";
+  v5.meta.examTargetDate = v4.meta?.examTargetDate || "";
+  v5.tests = Array.isArray(v4.tests) ? v4.tests : [];
+  let legacy = 0;
+  DOMAINS.forEach(dm => {
+    const od = v4.domains?.[dm.id]; if (!od) return;
+    const nd = v5.domains[dm.id];
+    nd.readiness = od.readiness || 0;
+    nd.weak = !!od.weak;
+    nd.notes = od.notes || "";
+    nd.lastReviewed = od.lastReviewed || null;
+    const h = parseFloat(od.hours); if (!isNaN(h)) legacy += h;
+  });
+  v5.meta.legacyHours = Math.round(legacy * 10) / 10;
+  // User-added tasks from v4 carry over into a custom bucket.
+  (v4.items || []).filter(i => i.custom).forEach(i => {
+    v5.items.push({ id:i.id, res:"custom", sec:"Custom tasks", domain:i.domain || 0, text:i.text, kind:"task", done:!!i.done, doneDate:i.doneDate || null, schedDate:i.schedDate || null, custom:true });
+  });
+  return v5;
+}
+
+// ---- Migration: v3 (original 30-day tracker) -> v4-shaped -> v5 ----
+function migrateV3(old) {
+  const v4 = { meta:{ startDate: old._startDate || "", examTargetDate: old._examTargetDate || "", migratedFrom:"cissp_v3" }, items:[], domains:{}, tests:[] };
+  DOMAINS.forEach(dm => {
+    const days = DOMAIN_DAYS[dm.id] || [];
+    const conf = days.map(d => parseFloat(old[`conf_${d}`])).filter(v => !isNaN(v) && v > 0);
+    const hrs  = days.map(d => parseFloat(old[`h_${d}`])).filter(v => !isNaN(v));
+    const extra = [];
+    days.forEach(d => {
+      if (old[`n_${d}`]) extra.push(String(old[`n_${d}`]));
+      if (old[`improve_${d}`]) extra.push("Improve: " + String(old[`improve_${d}`]));
+      try { const tags = JSON.parse(old[`improve_tags_${d}`] || "[]"); if (tags.length) extra.push("Flagged: " + tags.join(", ")); } catch(e) {}
+    });
+    v4.domains[dm.id] = {
+      readiness: conf.length ? Math.round(conf.reduce((a,b)=>a+b,0)/conf.length) : 0,
+      weak: !!old[`wf_${dm.id}`],
+      notes: [old[`wn_${dm.id}`], ...extra].filter(Boolean).join("\n"),
+      lastReviewed: null,
+      hours: hrs.length ? String(Math.round(hrs.reduce((a,b)=>a+b,0)*10)/10) : ""
+    };
+  });
+  [1,2,3].forEach(n => {
+    const score = old[`es_${n}`], date = old[`ed_${n}`], notes = old[`en_${n}`];
+    if ((score !== undefined && score !== "") || date || notes) {
+      v4.tests.push({ id:`mig${n}`, date: date || "", score: (score !== undefined ? String(score) : ""), focus:"Full exam", notes: notes ? String(notes) : "" });
+    }
+  });
+  return migrateV4(v4);
+}
+
+function load() {
+  let raw = localStorage.getItem("cissp_v5");
+  if (raw) { try { state = JSON.parse(raw); } catch(e) { state = null; } }
+  if (!state) {
+    const v4raw = localStorage.getItem("cissp_v4");
+    if (v4raw) { try { state = migrateV4(JSON.parse(v4raw)); } catch(e) { state = null; } }
+  }
+  if (!state) {
+    const v3raw = localStorage.getItem("cissp_v3");
+    if (v3raw) { try { state = migrateV3(JSON.parse(v3raw)); } catch(e) { state = null; } }
+  }
+  if (!state) state = freshState();
+  ensureShape();
+  save();
+  const sd = document.getElementById("start-date"); if (sd) sd.value = state.meta.startDate || "";
+  const ed = document.getElementById("exam-date"); if (ed) ed.value = state.meta.examTargetDate || "";
+}
+function save() { localStorage.setItem("cissp_v5", JSON.stringify(state)); }
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(s) { return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function findItem(id) { return state.items.find(i => i.id === id); }
+function dayRec(date) { if (!state.days[date]) state.days[date] = {}; return state.days[date]; }
+
+function localISO(d) { const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), da=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${da}`; }
+function todayISO() { const d=new Date(); d.setHours(0,0,0,0); return localISO(d); }
+function parseISO(iso) { return new Date(iso + "T00:00:00"); }
+function addDaysISO(iso, n) { const d=parseISO(iso); d.setDate(d.getDate()+n); return localISO(d); }
+function diffDays(aISO, bISO) { return Math.round((parseISO(bISO) - parseISO(aISO)) / 86400000); }
+function fmtShort(iso) { return parseISO(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
+function relSched(iso) {
+  const diff = diffDays(todayISO(), iso);
+  if (diff < 0)  return `${Math.abs(diff)}d overdue`;
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  if (diff <= 7) return `In ${diff}d`;
+  return fmtShort(iso);
+}
+function relReviewed(iso) {
+  if (!iso) return "—";
+  const diff = diffDays(iso, todayISO());
+  if (diff <= 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return `${diff}d ago`;
+}
+function isStale(dom) { return !dom.lastReviewed || diffDays(dom.lastReviewed, todayISO()) > STALE_DAYS; }
+
+const RES_LABEL = { sybex:"Sybex", dion:"Dion", bp:"Blueprint", custom:"Custom" };
+const KIND_TAG  = { quiz:"quiz", exam:"practice exam", questions:"questions" };
+
+function overallDone() { return state.items.filter(i=>i.done).length; }
+function overallPct() { return state.items.length ? Math.round(overallDone() / state.items.length * 100) : 0; }
+function resItems(res) { return state.items.filter(i => i.res === res); }
+function resPct(res) { const its = resItems(res); return its.length ? Math.round(its.filter(i=>i.done).length / its.length * 100) : 0; }
+function domainPct(id) { const its = state.items.filter(i=>i.domain===id); if (!its.length) return 0; return Math.round(its.filter(i=>i.done).length / its.length * 100); }
+function weightedPct() {
+  let total = 0, sum = 0;
+  DOMAINS.forEach(dm => { total += dm.weight; sum += dm.weight * domainPct(dm.id) / 100; });
+  return total ? Math.round(sum) : 0;
+}
+function overdueItems() { const t = todayISO(); return state.items.filter(i => !i.done && i.schedDate && i.schedDate < t); }
+function todayItems() { const t = todayISO(); return state.items.filter(i => i.schedDate === t); }
+function tomorrowItems() { const t = addDaysISO(todayISO(),1); return state.items.filter(i => !i.done && i.schedDate === t); }
+
+function ankiToday() { return !!state.days[todayISO()]?.anki; }
+function ankiStreak() {
+  let d = todayISO();
+  if (!state.days[d]?.anki) d = addDaysISO(d, -1);
+  let n = 0;
+  while (state.days[d]?.anki) { n++; d = addDaysISO(d, -1); }
+  return n;
+}
+function ankiDaysTotal() { return Object.values(state.days).filter(r => r.anki).length; }
+function totalHours() {
+  let h = state.meta.legacyHours || 0;
+  Object.values(state.days).forEach(r => { const v = parseFloat(r.hours); if (!isNaN(v)) h += v; });
+  return Math.round(h * 10) / 10;
+}
+function avgReadiness() { const v = DOMAINS.map(dm=>state.domains[dm.id].readiness).filter(r=>r>0); return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(1) : null; }
+function weakCount() { return DOMAINS.filter(dm=>state.domains[dm.id].weak).length; }
+
+function scoreClass(s) { const n=parseFloat(s); if(isNaN(n)) return ""; return n>=85?"good":n>=75?"mid":"low"; }
+function sortedTests() { return [...state.tests].sort((a,b)=>(a.date||"").localeCompare(b.date||"")); }
+function avgTestScore() { const v=state.tests.map(t=>parseFloat(t.score)).filter(n=>!isNaN(n)); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null; }
+
+function touchDomain(id) { if (id > 0 && state.domains[id]) state.domains[id].lastReviewed = todayISO(); }
+
+// ============================================================
+// EXPORT / IMPORT / BACKUP
+// ============================================================
+function exportData() {
+  const json = JSON.stringify(state, null, 2);
+  const blob = new Blob([json], { type:"application/json" });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `cissp_tracker_backup_${todayISO()}.json`; a.click();
+  URL.revokeObjectURL(url);
+  state.meta.lastBackup = Date.now(); save(); checkBackupReminder();
+}
+function importData() {
+  const input = document.createElement("input");
+  input.type = "file"; input.accept = ".json";
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (!confirm("Replace ALL current data with the imported file? This cannot be undone.")) return;
+        state = imported; ensureShape(); save();
+        document.getElementById("start-date").value = state.meta.startDate || "";
+        document.getElementById("exam-date").value = state.meta.examTargetDate || "";
+        refresh();
+      } catch(err) { alert("Could not read file — make sure it's a valid CISSP tracker JSON export."); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+function resetAll() {
+  if (!confirm("Reset ALL tracker data? This cannot be undone. (Old data under 'cissp_v3'/'cissp_v4' is left untouched.)")) return;
+  localStorage.removeItem("cissp_v5");
+  state = freshState(); save();
+  document.getElementById("start-date").value = "";
+  document.getElementById("exam-date").value = "";
+  refresh();
+}
+function hasData() {
+  return state.items.some(i=>i.done) || state.tests.length>0 || Object.keys(state.days).length>0 ||
+    DOMAINS.some(dm => { const d=state.domains[dm.id]; return d.weak || d.notes || d.readiness>0; });
+}
+function checkBackupReminder() {
+  const banner = document.getElementById("banner"); if (!banner) return;
+  const last = state.meta.lastBackup;
+  if (!hasData()) { banner.innerHTML = ""; return; }
+  if (!last || (Date.now() - last) > 86400000) {
+    banner.innerHTML = `<span>It's been over a day since your last backup. Export your progress to keep it safe.</span>
+      <span style="display:flex;gap:6px;align-items:center;">
+        <button data-act="export">Export now</button>
+        <button class="x" id="banner-x">×</button>
+      </span>`;
+    document.getElementById("banner-x")?.addEventListener("click", () => { banner.innerHTML = ""; });
+  } else { banner.innerHTML = ""; }
+}
+
+// ============================================================
+// HEADER + SIDEBAR
+// ============================================================
+function renderHeader() {
+  const pct = overallPct();
+  document.getElementById("prog-fill").style.width = pct + "%";
+  document.getElementById("prog-text").innerHTML = `<strong>${pct}%</strong> · ${overallDone()}/${state.items.length} tasks`;
+  let cd = "";
+  if (state.meta.examTargetDate) {
+    const diff = diffDays(todayISO(), state.meta.examTargetDate);
+    cd = diff > 0 ? `<strong>${diff}d</strong> to exam` : diff === 0 ? "<strong>Exam today</strong> — good luck" : `Exam was ${Math.abs(diff)}d ago`;
+  }
+  document.getElementById("countdown").innerHTML = cd;
+}
+
+function renderSidebar() {
+  const v = state.meta.activeView;
+  const od = overdueItems().length;
+  const todayLeft = todayItems().filter(i=>!i.done).length + od;
+  const nav = [
+    { view:"today",      label:"Today",          count: todayLeft ? String(todayLeft) : "", warn: od>0 },
+    { view:"curriculum", label:"Curriculum",     count: `${overallDone()}/${state.items.length}` },
+    { view:"tests",      label:"Practice Tests", count: state.tests.length ? String(state.tests.length) : "" },
+    { view:"summary",    label:"Summary",        count:"" }
+  ];
+  let html = `<div class="side-label">Views</div>`;
+  nav.forEach(n => {
+    html += `<button class="nav-btn ${v===n.view?"active":""}" data-act="nav" data-view="${n.view}">
+      <span>${n.label}</span>
+      ${n.count ? `<span class="nav-count ${n.warn?"warn":""}">${n.count}</span>` : ""}
+    </button>`;
+  });
+  html += `<div class="side-foot">Schedule tasks to days in the Curriculum; Today shows what's due. Anything unfinished can be bumped to tomorrow.</div>`;
+  document.getElementById("sidebar").innerHTML = html;
+}
+
+// ============================================================
+// SHARED ROW RENDERERS
+// ============================================================
+function planRow(it) {
+  const t = todayISO();
+  const whenWarn = it.schedDate && it.schedDate < t;
+  return `<div class="plan-row ${it.done?"done":""}">
+    <input type="checkbox" data-field="item-done" data-id="${it.id}" ${it.done?"checked":""}>
+    <span class="res-tag">${RES_LABEL[it.res] || it.res}</span>
+    <span class="plan-text">${esc(it.text)}</span>
+    ${KIND_TAG[it.kind] ? `<span class="kind-tag ${it.kind==="exam"?"exam":""}">${KIND_TAG[it.kind]}</span>` : ""}
+    ${it.schedDate ? `<span class="plan-when ${whenWarn?"warn":""}">${relSched(it.schedDate)}</span>` : ""}
+    <span class="plan-actions">
+      <button class="mini" data-act="sched-tmrw" data-id="${it.id}">→ tomorrow</button>
+      <input type="date" data-field="item-sched" data-id="${it.id}" value="${esc(it.schedDate||"")}">
+      ${it.schedDate ? `<button class="mini" data-act="sched-clear" data-id="${it.id}">clear</button>` : ""}
+    </span>
+  </div>`;
+}
+
+function itemRow(it) {
+  return `<li class="item ${it.done?"done":""}">
+    <input type="checkbox" data-field="item-done" data-id="${it.id}" ${it.done?"checked":""}>
+    <span class="item-text">${esc(it.text)}</span>
+    ${KIND_TAG[it.kind] ? `<span class="kind-tag ${it.kind==="exam"?"exam":""}">${KIND_TAG[it.kind]}</span>` : ""}
+    <span class="item-sched">
+      ${it.schedDate ? `<span class="plan-when">${relSched(it.schedDate)}</span>` : ""}
+      <input type="date" data-field="item-sched" data-id="${it.id}" value="${esc(it.schedDate||"")}" title="Schedule for a day">
+      <button class="mini" data-act="sched-tmrw" data-id="${it.id}" title="Schedule for tomorrow">→ tmrw</button>
+      ${it.custom ? `<button class="mini del" data-act="remove-item" data-id="${it.id}" title="Remove">×</button>` : ""}
+    </span>
+  </li>`;
+}
+
+// ============================================================
+// VIEW: TODAY
+// ============================================================
+function renderToday() {
+  const t = todayISO();
+  const over = overdueItems();
+  const today = todayItems();
+  const tmrw = tomorrowItems();
+  const day = state.days[t] || {};
+  const streak = ankiStreak();
+
+  let html = `<div class="view-head">
+    <div class="view-title">Today — ${fmtShort(t)}</div>
+    <div class="view-sub">Your checklist for the day. Check things off, or bump them to tomorrow.</div>
+  </div>
+
+  <div class="daily-panel">
+    <div class="daily-anki">
+      <input type="checkbox" id="anki-chk" ${ankiToday()?"checked":""}>
+      <label for="anki-chk">Did Anki today</label>
+    </div>
+    <div class="streak">${streak > 0 ? `<strong>${streak}</strong> day streak` : "No streak yet"} · ${ankiDaysTotal()} total Anki days</div>
+    <div class="daily-hours">
+      Hours studied today
+      <input class="num-input" type="number" min="0" step="0.5" placeholder="0" id="hours-today" value="${esc(day.hours||"")}">
+    </div>
+  </div>`;
+
+  if (over.length) {
+    html += `<div class="plan-group">
+      <div class="plan-group-head"><span class="plan-group-title warn">Overdue</span><span class="plan-group-count">${over.length} task${over.length!==1?"s":""}</span></div>
+      <div class="plan-card">${over.sort((a,b)=>(a.schedDate||"").localeCompare(b.schedDate||"")).map(planRow).join("")}</div>
+    </div>`;
+  }
+
+  const todayTodo = today.filter(i=>!i.done), todayDone = today.filter(i=>i.done);
+  html += `<div class="plan-group">
+    <div class="plan-group-head"><span class="plan-group-title">Today</span><span class="plan-group-count">${todayDone.length}/${today.length} done</span></div>
+    ${today.length
+      ? `<div class="plan-card">${[...todayTodo, ...todayDone].map(planRow).join("")}</div>`
+      : `<div class="empty-note">Nothing scheduled for today. Pick tasks in the <a data-act="nav" data-view="curriculum">Curriculum</a> and set them to a day.</div>`}
+  </div>`;
+
+  if (tmrw.length) {
+    html += `<div class="plan-group">
+      <div class="plan-group-head"><span class="plan-group-title">Tomorrow</span><span class="plan-group-count">${tmrw.length} task${tmrw.length!==1?"s":""}</span></div>
+      <div class="plan-card">${tmrw.map(planRow).join("")}</div>
+    </div>`;
+  }
+
+  document.getElementById("main").innerHTML = html;
+}
+
+// ============================================================
+// VIEW: CURRICULUM
+// ============================================================
+function csecOpenKey(res, idx) { return `${res}-${idx}`; }
+
+function renderCurriculum() {
+  let html = `<div class="view-head">
+    <div class="view-title">Curriculum</div>
+    <div class="view-sub">Every study task across your three resources. One checkbox per chapter, video, quiz, and question set — schedule any of them to a day.</div>
+  </div>`;
+
+  // ---- Sybex ----
+  const sx = resItems("sybex");
+  const sxDone = sx.filter(i=>i.done).length;
+  const sxOpen = state.meta.open["res-sybex"] !== false;
+  html += `<details class="resource" data-open-key="res-sybex" ${sxOpen?"open":""}>
+    <summary>
+      <span class="res-name">Sybex OSG — Official Study Guide (10th ed.)</span>
+      <span class="res-sub">${sxDone}/${sx.length} chapters</span>
+      <span class="res-bar ${sxDone===sx.length?"full":""}"><i style="width:${resPct("sybex")}%"></i></span>
+    </summary>
+    <div class="resource-body">
+      <ul class="items" style="padding-top:8px;">${sx.map(itemRow).join("")}</ul>
+      <div class="add-row">
+        <input id="add-sybex" placeholder="Add a Sybex task (e.g. re-read a chapter, end-of-chapter questions)…">
+        <button data-act="add-item" data-res="sybex">Add</button>
+      </div>
+    </div>
+  </details>`;
+
+  // ---- Dion ----
+  const dn = resItems("dion");
+  const dnDone = dn.filter(i=>i.done).length;
+  const dnOpen = state.meta.open["res-dion"] !== false;
+  let dionSections = "";
+  DION.forEach((s, si) => {
+    const secItems = dn.filter(i => i.id.startsWith(`dn-${si}-`));
+    const done = secItems.filter(i=>i.done).length;
+    const open = state.meta.open[csecOpenKey("dion", si)] === true;
+    dionSections += `<details class="csec" data-open-key="${csecOpenKey("dion", si)}" ${open?"open":""}>
+      <summary>
+        ${esc(s.t)}
+        ${s.d ? `<span class="dom-chip">D${s.d}</span>` : ""}
+        <span class="csec-prog ${done===secItems.length?"full":""}">${done}/${secItems.length}</span>
+      </summary>
+      <ul class="items">${secItems.map(itemRow).join("")}</ul>
+    </details>`;
+  });
+  const dnCustom = dn.filter(i => i.custom);
+  html += `<details class="resource" data-open-key="res-dion" ${dnOpen?"open":""}>
+    <summary>
+      <span class="res-name">Jason Dion — ISC2 CISSP Full Course &amp; Practice Exam (Udemy)</span>
+      <span class="res-sub">${dnDone}/${dn.length} items · 35 sections</span>
+      <span class="res-bar ${dnDone===dn.length?"full":""}"><i style="width:${resPct("dion")}%"></i></span>
+    </summary>
+    <div class="resource-body">
+      ${dionSections}
+      ${dnCustom.length ? `<div class="csec" style="padding:6px 0;"><ul class="items">${dnCustom.map(itemRow).join("")}</ul></div>` : ""}
+      <div class="add-row">
+        <input id="add-dion" placeholder="Add a Dion task (e.g. re-watch a section)…">
+        <button data-act="add-item" data-res="dion">Add</button>
+      </div>
+    </div>
+  </details>`;
+
+  // ---- Blueprint ----
+  const bp = resItems("bp");
+  const bpDone = bp.filter(i=>i.done).length;
+  const bpOpen = state.meta.open["res-bp"] !== false;
+  html += `<details class="resource" data-open-key="res-bp" ${bpOpen?"open":""}>
+    <summary>
+      <span class="res-name">Dr. Leonard Simon — CISSP Blueprint (book)</span>
+      <span class="res-sub">${bpDone}/${bp.length} tasks</span>
+      <span class="res-bar ${bpDone===bp.length?"full":""}"><i style="width:${resPct("bp")}%"></i></span>
+    </summary>
+    <div class="resource-body">
+      <ul class="items" style="padding-top:8px;">${bp.map(itemRow).join("")}</ul>
+      <div class="add-row">
+        <input id="add-bp" placeholder="Add a Blueprint task (e.g. a specific chapter or scenario set)…">
+        <button data-act="add-item" data-res="bp">Add</button>
+      </div>
+    </div>
+  </details>`;
+
+  // ---- Other custom tasks (migrated or unattached) ----
+  const cu = resItems("custom");
+  if (cu.length) {
+    const cuDone = cu.filter(i=>i.done).length;
+    const cuOpen = state.meta.open["res-custom"] !== false;
+    html += `<details class="resource" data-open-key="res-custom" ${cuOpen?"open":""}>
+      <summary>
+        <span class="res-name">Your custom tasks</span>
+        <span class="res-sub">${cuDone}/${cu.length}</span>
+        <span class="res-bar ${cuDone===cu.length?"full":""}"><i style="width:${resPct("custom")}%"></i></span>
+      </summary>
+      <div class="resource-body"><ul class="items" style="padding-top:8px;">${cu.map(itemRow).join("")}</ul></div>
+    </details>`;
+  }
+
+  document.getElementById("main").innerHTML = html;
+
+  // Persist expand/collapse without re-render.
+  document.querySelectorAll("[data-open-key]").forEach(el => {
+    el.addEventListener("toggle", () => { state.meta.open[el.dataset.openKey] = el.open; save(); });
+  });
+}
+
+// ============================================================
+// VIEW: PRACTICE TESTS
+// ============================================================
+function renderTests() {
+  const focusOpts = [
+    `<option value="Dion full practice exam">Dion full practice exam</option>`,
+    `<option value="Dion checkpoint quiz">Dion checkpoint quiz</option>`,
+    `<option value="Blueprint questions">Blueprint questions</option>`,
+    `<option value="Sybex chapter questions">Sybex chapter questions</option>`,
+    `<option value="Mixed">Mixed</option>`
+  ].concat(DOMAINS.map(dm => `<option value="D${dm.id} ${esc(dm.name)}">D${dm.id} ${esc(dm.name)}</option>`)).join("");
+
+  const tests = [...state.tests].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const avg = avgTestScore();
+
+  const rows = tests.map(tst => {
+    const cls = scoreClass(tst.score);
+    return `<div class="test-row">
+      <div class="test-score ${cls}">${tst.score!==""?esc(tst.score)+"%":"--"}</div>
+      <div class="test-meta">
+        <span class="test-date">${tst.date?esc(fmtShort(tst.date)):"No date"}</span>
+        <span class="test-focus">${esc(tst.focus||"")}</span>
+      </div>
+      <textarea data-field="test-notes" data-id="${tst.id}" placeholder="Mistake patterns, weak areas, takeaways…">${esc(tst.notes||"")}</textarea>
+      <button class="test-del" data-act="del-test" data-id="${tst.id}" title="Delete">×</button>
+    </div>`;
+  }).join("");
+
+  document.getElementById("main").innerHTML = `
+    <div class="view-head">
+      <div class="view-title">Practice tests</div>
+      <div class="view-sub">Log every quiz and practice exam over time. Target 85%+ consistently before exam day.${avg!==null?` Current average: <strong>${avg}%</strong> across ${state.tests.length} test${state.tests.length!==1?"s":""}.`:""}</div>
+    </div>
+    <div class="test-form">
+      <div class="test-form-grid">
+        <div class="tf-field"><span class="meta-label">Date</span><input type="date" id="test-date" value="${todayISO()}"></div>
+        <div class="tf-field"><span class="meta-label">Score %</span><input type="number" id="test-score" min="0" max="100" placeholder="--" style="width:80px;text-align:center;font-weight:600;"></div>
+        <div class="tf-field"><span class="meta-label">What was it</span><select id="test-focus">${focusOpts}</select></div>
+        <div class="tf-field grow"><span class="meta-label">Notes</span><input type="text" id="test-notes" placeholder="Optional…"></div>
+        <button class="btn-add" data-act="add-test">Add test</button>
+      </div>
+    </div>
+    ${state.tests.length ? `<div class="panel"><div class="panel-title">Score over time</div>${sparkHtml()}</div>` : ""}
+    ${rows || `<div class="empty-note">No tests logged yet. The Dion checkpoint quizzes are a good early baseline; log scores here as you go.</div>`}
+  `;
+}
+
+function sparkHtml() {
+  const tests = sortedTests().filter(t => !isNaN(parseFloat(t.score)));
+  if (!tests.length) return `<div class="empty-note">No scored tests yet.</div>`;
+  const bars = tests.map(t => {
+    const s = parseFloat(t.score);
+    const cls = s>=85?"good":s<75?"low":"";
+    return `<div class="b ${cls}" title="${t.date?fmtShort(t.date):""}: ${s}%"><i style="height:${s}%"></i><span>${s}</span></div>`;
+  }).join("");
+  return `<div class="spark">${bars}</div>`;
+}
+
+function addTestFromForm() {
+  const date = document.getElementById("test-date")?.value || "";
+  const score = document.getElementById("test-score")?.value ?? "";
+  const focus = document.getElementById("test-focus")?.value || "Mixed";
+  const notes = document.getElementById("test-notes")?.value || "";
+  if (score === "" && !notes && !date) return;
+  state.tests.push({ id:"t"+Date.now()+Math.random().toString(36).slice(2,5), date, score:String(score), focus, notes });
+  save(); refresh();
+}
+
+// ============================================================
+// VIEW: SUMMARY
+// ============================================================
+function starHtml(domId, current) {
+  let s = `<div class="stars">`;
+  for (let n=1; n<=5; n++) s += `<span class="star ${n<=current?"on":""}" data-act="readiness" data-domain="${domId}" data-val="${n}">${n<=current?"★":"☆"}</span>`;
+  return s + `</div>`;
+}
+
+function renderSummary() {
+  const oPct = overallPct(), wPct = weightedPct();
+  const avgR = avgReadiness(), avgS = avgTestScore();
+
+  const resRows = [
+    { res:"sybex", label:"Sybex OSG (21 chapters)" },
+    { res:"dion",  label:"Dion Udemy course (295 items)" },
+    { res:"bp",    label:"Simon CISSP Blueprint (16 tasks)" }
+  ].map(r => {
+    const its = resItems(r.res), done = its.filter(i=>i.done).length, p = resPct(r.res);
+    return `<div class="dprow">
+      <div class="nm">${esc(r.label)}</div>
+      <div class="tk ${p===100?"full":""}"><i style="width:${p}%"></i></div>
+      <div class="pc">${done}/${its.length}</div>
+    </div>`;
+  }).join("");
+
+  const domainBars = DOMAINS.map(dm => {
+    const p = domainPct(dm.id);
+    return `<div class="dprow">
+      <div class="nm">D${dm.id} ${esc(dm.name)} <small>${dm.weight}%</small></div>
+      <div class="tk ${p===100?"full":""}"><i style="width:${p}%"></i></div>
+      <div class="pc">${p}%</div>
+    </div>`;
+  }).join("");
+
+  const domRows = DOMAINS.map(dm => {
+    const dom = state.domains[dm.id];
+    return `<div class="dom-row">
+      <div class="nm">D${dm.id} ${esc(dm.name)}</div>
+      ${starHtml(dm.id, dom.readiness)}
+      <span class="dom-rev ${isStale(dom)&&domainPct(dm.id)>0?"stale":""}" title="Last reviewed">${relReviewed(dom.lastReviewed)}</span>
+      <button class="btn-small ${dom.weak?"on":""}" data-act="weak" data-domain="${dm.id}">${dom.weak?"Weak ✓":"Flag weak"}</button>
+      <button class="btn-small" data-act="mark-reviewed" data-domain="${dm.id}">Reviewed</button>
+      <textarea class="dom-notes-input" data-field="dom-notes" data-domain="${dm.id}" placeholder="Notes / weak areas for this domain…">${esc(dom.notes)}</textarea>
+    </div>`;
+  }).join("");
+
+  const attention = [];
+  DOMAINS.forEach(dm => {
+    const dom = state.domains[dm.id];
+    const reasons = [];
+    if (dom.weak) reasons.push("flagged weak");
+    if (dom.readiness > 0 && dom.readiness <= 2) reasons.push(`low readiness (${dom.readiness}/5)`);
+    if (isStale(dom) && domainPct(dm.id) > 0) reasons.push(`not reviewed in ${dom.lastReviewed?diffDays(dom.lastReviewed,todayISO())+"d":"a while"}`);
+    if (reasons.length) attention.push(`<div class="c-row"><span class="c-tag">D${dm.id}</span><span>${esc(dm.name)} — ${reasons.join("; ")}</span></div>`);
+  });
+  const calloutHtml = attention.length
+    ? `<div class="callout">${attention.join("")}</div>`
+    : `<div class="callout"><span class="ok">No domains need attention right now.</span></div>`;
+
+  document.getElementById("main").innerHTML = `
+    <div class="view-head">
+      <div class="view-title">Summary</div>
+      <div class="view-sub">Progress across resources and domains, and where to focus next.</div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Tasks done</div><div class="stat-val">${oPct}<small>%</small></div><div class="stat-sub">${overallDone()} of ${state.items.length}</div></div>
+      <div class="stat"><div class="stat-label">Weighted by exam</div><div class="stat-val">${wPct}<small>%</small></div><div class="stat-sub">Domain progress × weight</div></div>
+      <div class="stat"><div class="stat-label">Anki streak</div><div class="stat-val">${ankiStreak()}<small>d</small></div><div class="stat-sub">${ankiDaysTotal()} total Anki days</div></div>
+      <div class="stat"><div class="stat-label">Practice avg</div><div class="stat-val ${avgS!==null?scoreClass(avgS):""}">${avgS!==null?avgS+"%":"--"}</div><div class="stat-sub">${state.tests.length} test${state.tests.length!==1?"s":""} · target 85%+</div></div>
+      <div class="stat"><div class="stat-label">Avg readiness</div><div class="stat-val">${avgR!==null?avgR:"--"}<small>/5</small></div><div class="stat-sub">Self-rated</div></div>
+      <div class="stat"><div class="stat-label">Total hours</div><div class="stat-val">${totalHours()}</div><div class="stat-sub">${state.meta.legacyHours?`Incl. ${state.meta.legacyHours} carried over`:"Logged on Today view"}</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Resource progress</div>
+      ${resRows}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Domain coverage (ordered by exam weight)</div>
+      ${domainBars}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Needs attention — review these first</div>
+      ${calloutHtml}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Readiness per domain</div>
+      ${domRows}
+    </div>
+
+    ${state.tests.length ? `<div class="panel"><div class="panel-title">Practice scores over time ${avgS!==null?`· avg ${avgS}%`:""}</div>${sparkHtml()}</div>` : ""}
+
+    ${studyPlanHtml()}
+
+    <div class="panel">
+      <div class="panel-title">Backup &amp; data</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Export saves all progress to a JSON file you can re-import on another device. Older data (<code>cissp_v3</code>, <code>cissp_v4</code>) is preserved untouched.</div>
+      <div class="toolbar">
+        <button class="btn-ghost" data-act="export">Export JSON</button>
+        <button class="btn-ghost" data-act="import">Import JSON</button>
+        <button class="btn-ghost danger" data-act="reset">Reset all</button>
+      </div>
+    </div>
+  `;
+}
+
+function studyPlanHtml() {
+  return `
+  <details class="study-plan">
+    <summary>Study plan &amp; optimization</summary>
+    <div class="sp-body">
+      <h4>The core loop (per Dion section)</h4>
+      <ol>
+        <li>Watch the section's videos and take its <strong>Checkpoint quiz</strong>; log the quiz score in Practice Tests if it's rough.</li>
+        <li>Read the <strong>matching Sybex chapter(s)</strong> for the same topic to deepen what the videos introduced.</li>
+        <li>At the end of each domain, do the <strong>Blueprint scenarios + practice questions</strong> for that domain and rate your readiness (1–5). Anything ≤ 2 → flag it weak.</li>
+        <li><strong>Anki every day</strong> — keep the streak alive; it's the highest-leverage 20 minutes of the day.</li>
+      </ol>
+
+      <h4>Priority order (by exam weight)</h4>
+      <ol>
+        <li><span class="ord">16%</span> &nbsp;D1 · Security &amp; Risk Management</li>
+        <li><span class="ord">13%</span> &nbsp;D3 Architecture &amp; Engineering, D4 Network Security, D5 IAM, D7 Security Operations</li>
+        <li><span class="ord">12%</span> &nbsp;D6 · Security Assessment &amp; Testing</li>
+        <li><span class="ord">10%</span> &nbsp;D2 Asset Security, D8 Software Development Security</li>
+      </ol>
+      <p style="color:var(--muted);margin-top:4px;">The Dion course already runs in domain order — follow it, but budget extra calendar days for the heavier domains above.</p>
+
+      <h4>Scheduling rhythm</h4>
+      <ul>
+        <li>Each evening, schedule tomorrow's tasks: usually one Dion section (videos + checkpoint) or one Sybex chapter — not both of a heavy pair on the same day.</li>
+        <li>Didn't finish? Bump it to tomorrow from the Today view rather than letting it rot — overdue tasks surface in red.</li>
+        <li>Re-touch weak domains at expanding intervals (1d → 3d → 7d → 14d). The <em>Needs attention</em> list surfaces flagged, low-readiness, and stale domains.</li>
+      </ul>
+
+      <h4>Practice-test cadence</h4>
+      <ul>
+        <li><strong>Per section:</strong> the Dion checkpoint quiz, right after the videos.</li>
+        <li><strong>Per domain:</strong> Blueprint question sets when you close out a domain.</li>
+        <li><strong>Final stretch:</strong> Dion's full-length practice exam timed, plus re-runs of your weakest Blueprint question sets. Aim for a steady 85%+ before sitting.</li>
+      </ul>
+
+      <h4>Exam mindset</h4>
+      <ul>
+        <li>Drill high-yield facts: ports, crypto types, security models, access-control models, BCP/DR metrics (RTO/RPO/MTD), fire classes.</li>
+        <li>Answer like a risk manager — the best answer manages risk for the organization, not the most technical fix.</li>
+        <li>Light review only the day before. Trust the work.</li>
+      </ul>
+    </div>
+  </details>`;
+}
+
+// ============================================================
+// RENDER DISPATCH
+// ============================================================
+function renderMain() {
+  const v = state.meta.activeView;
+  if (v === "curriculum") renderCurriculum();
+  else if (v === "tests") renderTests();
+  else if (v === "summary") renderSummary();
+  else renderToday();
+}
+function refresh() { renderHeader(); renderSidebar(); renderMain(); checkBackupReminder(); }
+
+// ============================================================
+// EVENTS (delegated once)
+// ============================================================
+function addCustomItem(res, inputEl) {
+  const val = (inputEl?.value || "").trim(); if (!val) return;
+  state.items.push({ id:"c"+Date.now()+Math.random().toString(36).slice(2,5), res, sec:"Custom", domain:0, text:val, kind:"task", done:false, doneDate:null, schedDate:null, custom:true });
+  save(); refresh();
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-act]"); if (!t) return;
+  const act = t.dataset.act;
+  if (act === "nav") { state.meta.activeView = t.dataset.view; save(); refresh(); }
+  else if (act === "readiness") { const id=+t.dataset.domain, val=+t.dataset.val, dm=state.domains[id]; dm.readiness = (dm.readiness===val?0:val); dm.lastReviewed = todayISO(); save(); refresh(); }
+  else if (act === "weak") { const id=+t.dataset.domain; state.domains[id].weak = !state.domains[id].weak; save(); refresh(); }
+  else if (act === "mark-reviewed") { touchDomain(+t.dataset.domain); save(); refresh(); }
+  else if (act === "sched-tmrw") { const it=findItem(t.dataset.id); if(it){ it.schedDate = addDaysISO(todayISO(),1); save(); refresh(); } }
+  else if (act === "sched-clear") { const it=findItem(t.dataset.id); if(it){ it.schedDate = null; save(); refresh(); } }
+  else if (act === "remove-item") { const it=findItem(t.dataset.id); if(it && it.custom){ state.items = state.items.filter(x=>x.id!==it.id); save(); refresh(); } }
+  else if (act === "add-item") { addCustomItem(t.dataset.res, document.getElementById("add-"+t.dataset.res)); }
+  else if (act === "add-test") { addTestFromForm(); }
+  else if (act === "del-test") { state.tests = state.tests.filter(x=>x.id!==t.dataset.id); save(); refresh(); }
+  else if (act === "export") { exportData(); }
+  else if (act === "import") { importData(); }
+  else if (act === "reset") { resetAll(); }
+});
+
+document.addEventListener("change", e => {
+  const t = e.target.closest("[data-field]");
+  if (t) {
+    const f = t.dataset.field;
+    if (f === "item-done") { const it=findItem(t.dataset.id); if(it){ it.done = t.checked; it.doneDate = t.checked?todayISO():null; if(t.checked) touchDomain(it.domain); save(); refresh(); } }
+    else if (f === "item-sched") { const it=findItem(t.dataset.id); if(it){ it.schedDate = t.value || null; save(); refresh(); } }
+    return;
+  }
+  if (e.target.id === "anki-chk") { dayRec(todayISO()).anki = e.target.checked; save(); refresh(); }
+  else if (e.target.id === "hours-today") { dayRec(todayISO()).hours = e.target.value; save(); renderHeader(); }
+  else if (e.target.id === "start-date") { state.meta.startDate = e.target.value; save(); renderHeader(); }
+  else if (e.target.id === "exam-date") { state.meta.examTargetDate = e.target.value; save(); renderHeader(); }
+});
+
+document.addEventListener("input", e => {
+  const t = e.target.closest("[data-field]"); if (!t) return;
+  const f = t.dataset.field;
+  if (f === "dom-notes") { state.domains[+t.dataset.domain].notes = t.value; save(); }
+  else if (f === "test-notes") { const tst = state.tests.find(x=>x.id===t.dataset.id); if(tst){ tst.notes = t.value; save(); } }
+});
+
+// Enter adds a custom task from a resource's add-row input.
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.matches('[id^="add-"]')) {
+    e.preventDefault();
+    addCustomItem(e.target.id.replace("add-",""), e.target);
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+load();
+refresh();
+</script>
+</body>
+</html>
