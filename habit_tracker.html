@@ -866,7 +866,116 @@
   }
   .mood-btn:hover { filter: grayscale(0) opacity(1); transform: translateY(-1px); }
   .mood-btn.selected { filter: grayscale(0) opacity(1); border-color: var(--purple); background: var(--purple-dim); transform: scale(1.08); }
+
+  /* ============================================================
+     PHONE LAYOUT  (target: iPhone 16 Pro Max, 440×956 viewport)
+     ------------------------------------------------------------
+     Every rule below is scoped to `html.phone`, a class added by
+     the device-detection script in <head> ONLY on actual phones
+     (touch + phone-sized screen / phone UA). Desktop and iPad
+     never get the class, so nothing here can affect them — even
+     a desktop window resized narrow keeps the desktop layout.
+     ============================================================ */
+
+  /* ── Top bar: two rows — brand+actions, then full-width tabs ── */
+  html.phone .top-bar { height: auto; flex-wrap: wrap; padding: 8px 12px; gap: 8px; row-gap: 6px; }
+  html.phone .spacer { display: none; }
+  html.phone .brand { max-width: 1.25em; overflow: hidden; white-space: nowrap; flex-shrink: 0; } /* just the 🐼 */
+  html.phone .stats-mini { display: none; }  /* chips live in the Habits panel hint on phone */
+  html.phone .header-actions { margin-left: auto; gap: 5px; }
+  html.phone .hdr-btn, html.phone .sync-pill { padding: 10px 10px; font-size: 11.5px; }
+  html.phone .settings-btn { padding: 10px 11px; }
+  html.phone .tab-bar { order: 3; width: 100%; display: flex; justify-content: center; gap: 6px; }
+  html.phone .tab-btn { white-space: nowrap; padding: 12px 16px; font-size: 13px; flex: 1; max-width: 136px; }
+
+  /* ── Date strips: allow wrapping; day-off toggle gets its own row ── */
+  html.phone .date-strip { height: auto; min-height: 50px; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+  html.phone .date-strip-right { width: 100%; justify-content: center; }
+  html.phone .dayoff-toggle { width: 100%; justify-content: center; padding: 11px 12px; }
+  html.phone .date-arrow { width: 44px; height: 44px; }
+  html.phone .date-strip .panel-hint { display: none; }  /* instructional only */
+
+  /* ── Force single-column layout regardless of orientation ── */
+  html.phone .dashboard { grid-template-columns: 1fr; min-height: 0; padding: 12px; gap: 12px; }
+  html.phone .pl-grid { grid-template-columns: 1fr; min-height: 0; }
+  html.phone .panel { padding: 14px 12px; }
+
+  /* ── Mobile panel order: chronological for a phone day.
+        .dash-col { display:contents } promotes each panel to a
+        direct grid item so `order` works across columns. The
+        nth-child + accent selectors identify each panel — update
+        them if panels are ever added or moved between columns. ── */
+  html.phone .dash-col { display: contents; }
+  html.phone .dash-col:nth-child(1) .panel.accent-amber  { order: 1; }  /* Today's Focus    */
+  html.phone .dash-col:nth-child(2) .panel.accent-green  { order: 2; }  /* Daily Habits     */
+  html.phone .dash-col:nth-child(3) .panel.accent-water  { order: 3; }  /* Wellness         */
+  html.phone .dash-col:nth-child(3) .panel.accent-rose   { order: 4; }  /* Accountability   */
+  html.phone .dash-col:nth-child(4) .panel.accent-blue   { order: 5; }  /* Active Projects  */
+  html.phone .dash-col:nth-child(3) .panel.accent-amber  { order: 6; }  /* Weekly Plan      */
+  html.phone .dash-col:nth-child(4) .panel.accent-green  { order: 7; }  /* This Week grid   */
+  html.phone .dash-col:nth-child(1) .panel.accent-purple { order: 8; }  /* Reflection last  */
+
+  /* ── Touch targets (Apple HIG ~44pt; whole-card taps already big) ── */
+  html.phone .priority-check { width: 26px; height: 26px; min-width: 26px; }
+  html.phone .priority-row { padding: 10px; }
+  html.phone .water-drop { font-size: 29px; padding: 3px; }
+  html.phone .vitamin-chip { padding: 10px 14px; }
+  html.phone .vitamin-mini-btn { padding: 8px 12px; }
+  html.phone .milestone { width: 22px; height: 22px; border-radius: 6px; }
+  html.phone .mood-btn { font-size: 23px; padding: 8px 10px; }
+  html.phone .status-pill { padding: 7px 11px; }
+  html.phone .project-del { font-size: 15px; padding: 6px 8px; }
+  html.phone .add-habit-btn { padding: 13px; }
+  html.phone .plan-toggle { padding: 13px 12px; }
+  html.phone .plan-input { padding: 10px; }
+  html.phone .range-btn { padding: 9px 16px; }
+  html.phone .checkbox { width: 26px; height: 26px; min-width: 26px; }
+
+  /* Planner items */
+  html.phone .pl-item { padding: 11px 10px; }
+  html.phone .pl-item-check { width: 26px; height: 26px; min-width: 26px; border-radius: 7px; }
+  html.phone .pl-item-del { opacity: 0.7; font-size: 15px; padding: 6px 8px; }  /* no hover on touch */
+  html.phone .pl-chip { padding: 9px 13px; font-size: 12.5px; }
+  html.phone .pl-add-input { padding: 11px 10px; }
+
+  /* ── Inputs at 16px so iOS Safari never auto-zooms on focus ── */
+  html.phone textarea, html.phone input[type="text"],
+  html.phone .modal-input, html.phone .gratitude-input,
+  html.phone .plan-input, html.phone .pl-add-input,
+  html.phone .project-note, html.phone .project-name,
+  html.phone .priority-input { font-size: 16px; }
+
+  /* ── Modals: top-anchored + internally scrollable so the iOS
+        keyboard never hides the focused field ── */
+  html.phone .modal-overlay { padding: 12px; align-items: flex-start; padding-top: 7vh; }
+  html.phone .modal { max-width: 100%; padding: 20px 16px; max-height: 82dvh; overflow-y: auto; }
+  html.phone .modal-actions { position: sticky; bottom: 0; background: var(--bg2); padding-top: 8px; }
+
+  /* ── Typography floor ── */
+  html.phone .habit-sub { font-size: 12px; }
+  html.phone .panel-hint { font-size: 11px; }
+  html.phone .habit-grid-table th { font-size: 10px; }
+  html.phone .week-count { font-size: 10.5px; }
+  html.phone .project-prog-label { font-size: 11px; }
+  html.phone .neg-week-bar-label { display: none; }
+
+  /* ── Declutter ── */
+  html.phone .water-hint { display: none; }
+  html.phone .grid-legend { display: none; }
+  html.phone .welcome-banner { flex-direction: column; text-align: center; gap: 10px; }
 </style>
+<script>
+  /* Device detection: tag <html> with .phone on actual phones only.
+     The layout switches on DEVICE TYPE, not window width — a desktop
+     browser resized narrow keeps the desktop layout, and iPads keep
+     the tablet layout (their shortest screen edge is > 500px). */
+  (function () {
+    var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    var phoneScreen = Math.min(screen.width, screen.height) <= 500;
+    var phoneUA = /iPhone|Android.+Mobile/i.test(navigator.userAgent);
+    if (phoneUA || (coarse && phoneScreen)) document.documentElement.classList.add('phone');
+  })();
+</script>
 </head>
 <body>
 
