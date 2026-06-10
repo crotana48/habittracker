@@ -289,6 +289,46 @@ details.study-plan[open] > summary::before { transform: rotate(90deg); }
 .btn-ghost { border: 1px solid var(--border-2); background: var(--surface); color: var(--muted); border-radius: 6px; padding: 7px 14px; font-size: 0.78rem; font-weight: 500; }
 .btn-ghost:hover { background: var(--hover); color: var(--text); }
 .btn-ghost.danger:hover { border-color: #e0bdb2; color: var(--low); }
+
+/* ============================================================
+   CLOUD SYNC pill (header) + dialog — ported from habit_tracker.html,
+   colors mapped onto this file's light palette.
+   ============================================================ */
+.sync-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border-2); color: var(--muted);
+  border-radius: 6px; cursor: pointer; font-size: 0.72rem; font-weight: 600;
+  padding: 4px 11px; white-space: nowrap; transition: all 0.2s;
+}
+.sync-pill:hover { border-color: var(--faint); color: var(--text); }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex-shrink: 0; }
+.sync-pill.s-synced  { color: var(--good); border-color: #bcd6c5; }
+.sync-pill.s-synced  .sync-dot { background: var(--good); }
+.sync-pill.s-syncing { color: var(--accent); border-color: #bccbf0; }
+.sync-pill.s-syncing .sync-dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+.sync-pill.s-error   { color: var(--mid); border-color: #e3cf94; }
+.sync-pill.s-error   .sync-dot { background: var(--mid); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 420px; transform: translateY(20px); transition: transform 0.2s; }
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; }
+.modal-field { margin-bottom: 14px; }
+.modal-label { font-size: 0.62rem; color: var(--faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+.modal-input { background: var(--surface); border: 1px solid var(--border-2); border-radius: 6px; padding: 9px 11px; color: var(--text); font-size: 0.84rem; outline: none; width: 100%; transition: border-color 0.2s; }
+.modal-input:focus { border-color: var(--accent); }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.btn { flex: 1; padding: 9px; border-radius: 6px; border: 1px solid var(--border-2); font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.btn-cancel { background: var(--surface); color: var(--muted); }
+.btn-cancel:hover { background: var(--hover); color: var(--text); }
+.btn-save { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.btn-save:hover { background: #274fbb; }
 </style>
 </head>
 <body>
@@ -303,6 +343,7 @@ details.study-plan[open] > summary::before { transform: rotate(90deg); }
   </div>
   <div class="countdown" id="countdown"></div>
   <div class="hdr-spacer"></div>
+  <button class="sync-pill" id="syncPill" onclick="openSyncDialog()" title="Cloud sync across your devices"><span class="sync-dot"></span> Sync off</button>
   <button class="hdr-btn" data-act="export">Export</button>
   <button class="hdr-btn" data-act="import">Import</button>
   <div class="hdr-dates">
@@ -317,6 +358,31 @@ details.study-plan[open] > summary::before { transform: rotate(90deg); }
 <div class="layout">
   <div class="sidebar" id="sidebar"></div>
   <div class="main"><div class="wrap" id="main"></div></div>
+</div>
+
+<!-- CLOUD SYNC DIALOG -->
+<div class="modal-overlay" id="syncOverlay">
+  <div class="modal">
+    <div class="modal-title">☁ Cloud Sync</div>
+    <p style="font-size:0.8rem;color:var(--muted);line-height:1.55;margin-bottom:10px">
+      Keep your tracker in sync across your Mac, iPhone &amp; iPad through a private GitHub Gist — no server to run.
+      One-time setup takes ~2 minutes; see <strong>SYNC_SETUP.md</strong>. Your token is stored only on this device and is never included in synced data.
+    </p>
+    <div class="modal-field">
+      <div class="modal-label">GitHub token (needs the <code>gist</code> scope)</div>
+      <input class="modal-input" id="syncToken" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Gist ID (optional — blank creates one for you)</div>
+      <input class="modal-input" id="syncGist" type="text" placeholder="auto-created on connect" autocomplete="off" spellcheck="false">
+    </div>
+    <div id="syncStatusLine" style="font-size:0.78rem;color:var(--muted);min-height:16px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="disconnectSync()">Disconnect</button>
+      <button class="btn btn-cancel" onclick="closeSyncDialog()">Close</button>
+      <button class="btn btn-save" onclick="connectSync()">Connect &amp; sync</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -738,6 +804,9 @@ const DOMAIN_DAYS = { 1:[1,2], 2:[3,4], 3:[5,6,7], 4:[8,9,10], 5:[11,12], 6:[13,
 // STATE
 // ============================================================
 let state = null;
+// False until init finishes: the save() inside load() must not stamp
+// cissp_updated_at, or a fresh device would look newer than the cloud copy.
+let booted = false;
 
 function seedItems() {
   const items = [];
@@ -857,7 +926,7 @@ function load() {
   const sd = document.getElementById("start-date"); if (sd) sd.value = state.meta.startDate || "";
   const ed = document.getElementById("exam-date"); if (ed) ed.value = state.meta.examTargetDate || "";
 }
-function save() { localStorage.setItem("cissp_v5", JSON.stringify(state)); }
+function save() { localStorage.setItem("cissp_v5", JSON.stringify(state)); if (booted) syncTouch(); }
 
 // ============================================================
 // HELPERS
@@ -933,6 +1002,9 @@ function touchDomain(id) { if (id > 0 && state.domains[id]) state.domains[id].la
 // EXPORT / IMPORT / BACKUP
 // ============================================================
 function exportData() {
+  // Exports only the app state — device-local sync config (cissp_sync_token /
+  // cissp_sync_gist / cissp_updated_at) lives outside `state`, so a backup
+  // file never carries the GitHub token.
   const json = JSON.stringify(state, null, 2);
   const blob = new Blob([json], { type:"application/json" });
   const url  = URL.createObjectURL(blob);
@@ -951,6 +1023,8 @@ function importData() {
       try {
         const imported = JSON.parse(ev.target.result);
         if (!confirm("Replace ALL current data with the imported file? This cannot be undone.")) return;
+        // Only `state` is replaced — a backup can never overwrite this
+        // device's sync token/gist id, and the device stays connected.
         state = imported; ensureShape(); save();
         document.getElementById("start-date").value = state.meta.startDate || "";
         document.getElementById("exam-date").value = state.meta.examTargetDate || "";
@@ -963,6 +1037,8 @@ function importData() {
 }
 function resetAll() {
   if (!confirm("Reset ALL tracker data? This cannot be undone. (Old data under 'cissp_v3'/'cissp_v4' is left untouched.)")) return;
+  // Sync config (cissp_sync_*) is preserved so the device stays connected;
+  // the wipe itself syncs to the cloud via save() below.
   localStorage.removeItem("cissp_v5");
   state = freshState(); save();
   document.getElementById("start-date").value = "";
@@ -1211,9 +1287,14 @@ function renderCurriculum() {
 
   document.getElementById("main").innerHTML = html;
 
-  // Persist expand/collapse without re-render.
+  // Persist expand/collapse without re-render. Only save on a real change —
+  // Chrome queues a toggle event for every <details open> at render time, and
+  // saving those would re-stamp cissp_updated_at right after a sync pull.
   document.querySelectorAll("[data-open-key]").forEach(el => {
-    el.addEventListener("toggle", () => { state.meta.open[el.dataset.openKey] = el.open; save(); });
+    el.addEventListener("toggle", () => {
+      if (state.meta.open[el.dataset.openKey] === el.open) return;
+      state.meta.open[el.dataset.openKey] = el.open; save();
+    });
   });
 }
 
@@ -1510,11 +1591,190 @@ document.addEventListener("keydown", e => {
   }
 });
 
+/* ============================================================
+   CLOUD SYNC  (GitHub Gist backend — no server to run)
+   ------------------------------------------------------------
+   Ported from habit_tracker.html. Why Gist (vs. CloudKit /
+   Supabase): keeps this file 100% self-contained (plain fetch —
+   no SDK or CDN), works identically in Safari on Mac/iPhone/iPad,
+   and needs only a personal-access token (no database, tables, or
+   backend). Conflict policy is last-write-wins by timestamp —
+   correct for a single user.
+
+   Config keys (device-local, NEVER synced / exported):
+     cissp_sync_token  -> GitHub PAT with "gist" scope
+     cissp_sync_gist   -> gist id (auto-created on first connect)
+
+   On-wire envelope (one file inside the shared gist):
+     { v:1, updatedAt:<ms>, payload:{ cissp_*: "<stringified value>", … } }
+   ============================================================ */
+// Keys that stay on this device and are excluded from the synced payload.
+// cissp_v3/cissp_v4 are pre-conversion archives: never synced, and never
+// removed when a remote snapshot is applied.
+const SYNC_LOCAL_KEYS = ['cissp_updated_at', 'cissp_v3', 'cissp_v4'];
+function isSyncableKey(k) { return k.startsWith('cissp_') && !k.startsWith('cissp_sync_') && !SYNC_LOCAL_KEYS.includes(k); }
+
+function getLocalUpdatedAt() { return parseInt(localStorage.getItem('cissp_updated_at') || '0', 10); }
+function getSyncPayload() {
+  const out = {};
+  Object.keys(localStorage).filter(isSyncableKey).forEach(k => { out[k] = localStorage.getItem(k); });
+  return out;
+}
+function applyRemoteSnapshot(payload, remoteUpdatedAt) {
+  // Replace all syncable keys with the remote snapshot, leaving device-local config intact.
+  Object.keys(localStorage).filter(isSyncableKey).forEach(k => localStorage.removeItem(k));
+  Object.keys(payload || {}).filter(isSyncableKey).forEach(k => localStorage.setItem(k, payload[k]));
+  localStorage.setItem('cissp_updated_at', String(remoteUpdatedAt)); // adopt remote stamp so we don't re-push
+  // Rebuild in-memory state from the new snapshot WITHOUT save() — saving here
+  // would re-stamp cissp_updated_at and echo the pull back as a push.
+  try { state = JSON.parse(localStorage.getItem('cissp_v5')); } catch (e) { state = null; }
+  if (!state) state = freshState();
+  ensureShape();
+  document.getElementById('start-date').value = state.meta.startDate || '';
+  document.getElementById('exam-date').value = state.meta.examTargetDate || '';
+  refresh();
+}
+
+// Mark local data dirty: bump the modified timestamp and queue a cloud push.
+// Called from save() so any change anywhere triggers a sync.
+function syncTouch() {
+  localStorage.setItem('cissp_updated_at', Date.now().toString());
+  if (typeof Sync !== 'undefined') Sync.schedulePush();
+}
+
+const Sync = (() => {
+  const FILENAME = 'cissp_tracker.json';
+  let pushTimer = null, busy = false;
+  const cfg = () => ({ token: localStorage.getItem('cissp_sync_token') || '', gist: localStorage.getItem('cissp_sync_gist') || '' });
+  const enabled = () => !!cfg().token;
+
+  function setStatus(s, msg) {
+    const pill = document.getElementById('syncPill');
+    if (pill) {
+      pill.classList.remove('s-synced', 's-syncing', 's-error');
+      const label = { off: 'Sync off', synced: 'Synced', syncing: 'Syncing…', error: 'Sync error', offline: 'Offline' }[s] || 'Sync';
+      pill.innerHTML = `<span class="sync-dot"></span> ${label}`;
+      if (s === 'synced') pill.classList.add('s-synced');
+      else if (s === 'syncing') pill.classList.add('s-syncing');
+      else if (s === 'error' || s === 'offline') pill.classList.add('s-error');
+      if (msg) pill.title = msg;
+    }
+    const line = document.getElementById('syncStatusLine');
+    if (line && msg) { line.textContent = msg; line.style.color = s === 'error' ? 'var(--low)' : s === 'synced' ? 'var(--good)' : 'var(--muted)'; }
+  }
+
+  async function api(url, opts = {}) {
+    const res = await fetch(url, { ...opts, headers: { 'Authorization': 'token ' + cfg().token, 'Accept': 'application/vnd.github+json', ...(opts.headers || {}) } });
+    if (res.status === 401) throw new Error('Token rejected (check the gist scope).');
+    if (!res.ok) throw new Error('GitHub error ' + res.status);
+    return res.json();
+  }
+  async function ensureGist() {
+    let { gist } = cfg();
+    if (gist) return gist;
+    const j = await api('https://api.github.com/gists', { method: 'POST', body: JSON.stringify({
+      description: 'Trackers sync (CISSP + habits)', public: false,
+      files: { [FILENAME]: { content: JSON.stringify({ v: 1, updatedAt: 0, payload: null }) } }
+    }) });
+    localStorage.setItem('cissp_sync_gist', j.id);
+    const gi = document.getElementById('syncGist'); if (gi) gi.value = j.id;
+    return j.id;
+  }
+  async function pull() {
+    const { gist } = cfg(); if (!gist) return null;
+    const j = await api('https://api.github.com/gists/' + gist);
+    const f = j.files && j.files[FILENAME];
+    if (!f || !f.content) return null;
+    try { return JSON.parse(f.content); } catch { return null; }
+  }
+  async function push() {
+    const gist = await ensureGist();
+    await api('https://api.github.com/gists/' + gist, { method: 'PATCH', body: JSON.stringify({
+      files: { [FILENAME]: { content: JSON.stringify({ v: 1, updatedAt: getLocalUpdatedAt(), payload: getSyncPayload() }) } }
+    }) });
+  }
+  function schedulePush() {
+    if (!enabled()) return;
+    if (!navigator.onLine) { setStatus('offline', "You're offline — changes will sync when you reconnect."); return; }
+    setStatus('syncing');
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(async () => {
+      try { await push(); setStatus('synced', 'Last synced ' + new Date().toLocaleTimeString()); }
+      catch (e) { setStatus('error', e.message || String(e)); }
+    }, 1500);
+  }
+  async function init() {
+    if (!enabled()) { setStatus('off'); return; }
+    if (!navigator.onLine) { setStatus('offline', 'Offline — using local data.'); return; }
+    setStatus('syncing');
+    try {
+      const remote = await pull();
+      if (remote && remote.payload && remote.updatedAt > getLocalUpdatedAt()) {
+        applyRemoteSnapshot(remote.payload, remote.updatedAt);
+        setStatus('synced', 'Pulled latest from cloud');
+      } else if (hasData()) {
+        await push();
+        setStatus('synced', 'Local data pushed to cloud');
+      } else { setStatus('synced', 'Connected'); }
+    } catch (e) { setStatus('error', e.message || String(e)); }
+  }
+  // Pull-if-newer when the tab regains focus (the "I just picked up my iPad" moment).
+  async function poll() {
+    if (!enabled() || !navigator.onLine || busy) return;
+    busy = true;
+    try {
+      const remote = await pull();
+      if (remote && remote.payload && remote.updatedAt > getLocalUpdatedAt() + 1) {
+        applyRemoteSnapshot(remote.payload, remote.updatedAt);
+        setStatus('synced', 'Updated from another device');
+      }
+    } catch (e) { /* keep working locally */ } finally { busy = false; }
+  }
+  return { init, push, schedulePush, poll, setStatus, enabled, cfg };
+})();
+
+/* ── Sync dialog wiring ── */
+function openSyncDialog() {
+  const { token, gist } = Sync.cfg();
+  document.getElementById('syncToken').value = token;
+  document.getElementById('syncGist').value = gist;
+  const line = document.getElementById('syncStatusLine');
+  line.textContent = token ? 'Connected. Changes sync automatically.' : 'Not connected yet.';
+  line.style.color = 'var(--muted)';
+  document.getElementById('syncOverlay').classList.add('open');
+}
+function closeSyncDialog() { document.getElementById('syncOverlay').classList.remove('open'); }
+async function connectSync() {
+  const token = document.getElementById('syncToken').value.trim();
+  const gist = document.getElementById('syncGist').value.trim();
+  const line = document.getElementById('syncStatusLine');
+  if (!token) { line.textContent = 'Paste a GitHub token first.'; line.style.color = 'var(--low)'; return; }
+  localStorage.setItem('cissp_sync_token', token);
+  if (gist) localStorage.setItem('cissp_sync_gist', gist); else localStorage.removeItem('cissp_sync_gist');
+  line.textContent = 'Connecting…'; line.style.color = 'var(--muted)';
+  await Sync.init();
+}
+function disconnectSync() {
+  localStorage.removeItem('cissp_sync_token');
+  localStorage.removeItem('cissp_sync_gist');
+  document.getElementById('syncToken').value = '';
+  document.getElementById('syncGist').value = '';
+  Sync.setStatus('off');
+  const line = document.getElementById('syncStatusLine');
+  line.textContent = 'Disconnected from this device. Cloud data is untouched.'; line.style.color = 'var(--muted)';
+}
+document.getElementById('syncOverlay').addEventListener('click', e => { if (e.target === document.getElementById('syncOverlay')) closeSyncDialog(); });
+window.addEventListener('online', () => Sync.init());
+window.addEventListener('offline', () => Sync.enabled() && Sync.setStatus('offline', "You're offline — changes will sync when you reconnect."));
+window.addEventListener('focus', () => Sync.poll());
+
 // ============================================================
 // INIT
 // ============================================================
 load();
 refresh();
+booted = true; // saves from here on stamp cissp_updated_at and queue a push
+Sync.init();
 </script>
 </body>
 </html>
