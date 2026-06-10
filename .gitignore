@@ -1,0 +1,12 @@
+# macOS noise
+.DS_Store
+
+# Local editor/session config
+.claude/
+
+# Local backups — never publish
+*.bak
+
+# Personal files not part of the public site (remove a line to publish it)
+debt_tracker.html
+SYNC_SETUP.md
