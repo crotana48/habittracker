@@ -929,6 +929,9 @@ function ensureShape() {
   if (!state.meta) state.meta = {};
   if (!state.meta.open) state.meta.open = {};
   if (!state.meta.activeView) state.meta.activeView = "today";
+  // Daily-plan phases are anchored to the exam date; default to the user's
+  // booked exam if it was never set (moving the date moves the phases).
+  if (!state.meta.examTargetDate) state.meta.examTargetDate = "2026-07-25";
   if (typeof state.meta.legacyHours !== "number") state.meta.legacyHours = 0;
   if (!Array.isArray(state.items) || !state.items.length) state.items = seedItems();
   if (!state.days) state.days = {};
@@ -1057,6 +1060,64 @@ function weightedPct() {
 function overdueItems() { const t = todayISO(); return state.items.filter(i => !i.done && i.schedDate && i.schedDate < t); }
 function todayItems() { const t = todayISO(); return state.items.filter(i => i.schedDate === t); }
 function tomorrowItems() { const t = addDaysISO(todayISO(),1); return state.items.filter(i => !i.done && i.schedDate === t); }
+
+// ---- Daily suggested plan: phase templates anchored to the exam date ----
+// Phases by days-to-exam: >=20 content, 19-6 remediation, 5-1 taper, 0 exam day.
+const LOG_LINK = `<a data-act="nav" data-view="tests">log score</a>`;
+const TPL = {
+  stdWeekday: [
+    "Audio file for current domain (during cardio/drive)",
+    "Dion Training videos — current domain section (45–60 min)",
+    "CISSP Blueprint (Simon) — scenarios for current domain (20–30 min)",
+    `Wiley 25-question quiz on current domain + ${LOG_LINK}`
+  ],
+  stdSat: [
+    "Finish this week's Dion video sections",
+    "OSG gap-reading (only sections flagged weak by quiz results)",
+    "Remaining Blueprint scenarios for this week's domains",
+    `Wiley 50-question mixed quiz + ${LOG_LINK}`
+  ],
+  stdSun: ["Audio re-listen (light day)"],
+  remWeekday: [
+    "Blueprint practice questions — weakest domain (25–50 q)",
+    "OSG/Dion review of missed topics",
+    "Audio re-listen for weakest domain"
+  ],
+  remSat: [
+    `Wiley 50-question mixed quiz + ${LOG_LINK}`,
+    "Review missed topics from the quiz"
+  ],
+  remSun: ["Audio re-listen (light day)"],
+  taper: [
+    "Light review of flagged weak areas — notes only",
+    "Audio re-listen (optional)",
+    "Rest — no new content"
+  ]
+};
+function daysToExam(dateISO) {
+  const ex = state.meta.examTargetDate;
+  return ex ? diffDays(dateISO, ex) : null;
+}
+function phaseFor(dateISO) {
+  const d = daysToExam(dateISO);
+  if (d === null) return "standard";
+  if (d === 0) return "examday";
+  if (d < 0) return "post";
+  if (d <= 5) return "taper";
+  if (d <= 19) return "remediation";
+  return "standard";
+}
+function templateFor(dateISO) {
+  const phase = phaseFor(dateISO);
+  const dow = parseISO(dateISO).getDay(); // 0=Sun, 6=Sat
+  if (phase === "examday" || phase === "post") return [];
+  if (phase === "taper") return TPL.taper;
+  if (phase === "remediation") return dow === 6 ? TPL.remSat : dow === 0 ? TPL.remSun : TPL.remWeekday;
+  return dow === 6 ? TPL.stdSat : dow === 0 ? TPL.stdSun : TPL.stdWeekday;
+}
+function phaseLabel(phase) {
+  return { remediation:"Remediation", taper:"Taper", examday:"Exam day" }[phase] || "";
+}
 
 function ankiToday() { return !!state.days[todayISO()]?.anki; }
 function ankiStreak() {
@@ -1244,6 +1305,37 @@ function renderToday() {
     </div>
   </div>`;
 
+  // Suggested daily plan from the phase template (template text is static
+  // authored HTML — not esc()'d so the "log score" link works).
+  const phase = phaseFor(t);
+  const tpl = templateFor(t);
+  const tplDone = day.tpl || {};
+  const d2x = daysToExam(t);
+  if (phase === "examday") {
+    html += `<div class="plan-group">
+      <div class="plan-group-head"><span class="plan-group-title">Suggested today</span><span class="plan-group-count">Exam day</span></div>
+      <div class="plan-card"><div class="empty-note" style="padding:14px;">Exam day — trust the work.</div></div>
+    </div>`;
+  } else if (tpl.length) {
+    const doneN = tpl.filter((_, i) => tplDone[i]).length;
+    const chip = phaseLabel(phase) ? `<span class="dom-chip">${phaseLabel(phase)}</span>` : "";
+    const cd = d2x !== null && d2x > 0 ? `<span class="plan-group-count">${d2x}d to exam</span>` : "";
+    const rows = tpl.map((label, i) => `
+      <div class="plan-row ${tplDone[i] ? "done" : ""}">
+        <input type="checkbox" data-field="tpl-done" data-idx="${i}" ${tplDone[i] ? "checked" : ""}>
+        <span class="plan-text">${label}</span>
+      </div>`).join("");
+    html += `<div class="plan-group">
+      <div class="plan-group-head">
+        <span class="plan-group-title">Suggested today</span>
+        ${chip}
+        <span class="plan-group-count">${doneN}/${tpl.length} done</span>
+        ${cd}
+      </div>
+      <div class="plan-card">${rows}</div>
+    </div>`;
+  }
+
   if (over.length) {
     html += `<div class="plan-group">
       <div class="plan-group-head"><span class="plan-group-title warn">Overdue</span><span class="plan-group-count">${over.length} task${over.length!==1?"s":""}</span></div>
@@ -1265,6 +1357,17 @@ function renderToday() {
       <div class="plan-card">${tmrw.map(planRow).join("")}</div>
     </div>`;
   }
+
+  html += `<div class="panel" style="margin-top:4px;">
+    <div class="panel-title">Resources</div>
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.8;">
+      Dion Training — video course &amp; checkpoint quizzes<br>
+      Wiley test bank — 25q domain / 50q mixed quizzes<br>
+      CISSP Blueprint (Dr. Simon) — scenarios &amp; practice questions<br>
+      Sybex OSG — gap reading by chapter<br>
+      Audio files — cardio / drive listening
+    </div>
+  </div>`;
 
   document.getElementById("main").innerHTML = html;
 }
@@ -1386,6 +1489,8 @@ function renderCurriculum() {
 // ============================================================
 function renderTests() {
   const focusOpts = [
+    `<option value="Wiley 25-question quiz">Wiley 25-question quiz</option>`,
+    `<option value="Wiley 50-question mixed">Wiley 50-question mixed</option>`,
     `<option value="Dion full practice exam">Dion full practice exam</option>`,
     `<option value="Dion checkpoint quiz">Dion checkpoint quiz</option>`,
     `<option value="Blueprint questions">Blueprint questions</option>`,
@@ -1651,6 +1756,13 @@ document.addEventListener("change", e => {
     const f = t.dataset.field;
     if (f === "item-done") { const it=findItem(t.dataset.id); if(it){ it.done = t.checked; it.doneDate = t.checked?todayISO():null; if(t.checked) touchDomain(it.domain); save(); refresh(); } }
     else if (f === "item-sched") { const it=findItem(t.dataset.id); if(it){ it.schedDate = t.value || null; save(); refresh(); } }
+    else if (f === "tpl-done") {
+      const rec = dayRec(todayISO());
+      if (!rec.tpl) rec.tpl = {};
+      if (t.checked) rec.tpl[t.dataset.idx] = true; else delete rec.tpl[t.dataset.idx];
+      if (!Object.keys(rec.tpl).length) delete rec.tpl;
+      save(); refresh();
+    }
     return;
   }
   if (e.target.id === "anki-chk") { dayRec(todayISO()).anki = e.target.checked; save(); refresh(); }
