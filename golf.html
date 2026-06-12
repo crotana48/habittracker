@@ -1233,14 +1233,14 @@ function renderCHSelects() {
     : '<option value="">—</option>';
   if (keepT && course && teeById(course, keepT)) tSel.value = keepT;
 }
-function renderCHCalc() {
+function renderCHCalc(retried) {
   const r = calc();
   const out = document.getElementById('chResult'), det = document.getElementById('chDetail');
   const course = courseById(document.getElementById('chCourse').value);
   const tee = teeById(course, document.getElementById('chTee').value);
   if (!course || !tee) {
-    // course changed → repopulate tees
-    if (course && !tee) { renderCHSelects(); return renderCHCalc(); }
+    // course changed → repopulate tees once, then give up (course may have no tees)
+    if (course && !tee && !retried) { renderCHSelects(); return renderCHCalc(true); }
     out.textContent = '—'; det.textContent = 'Add a course to use the calculator.'; return;
   }
   if (r.index === null) { out.textContent = '—'; det.textContent = 'Needs a handicap index (3 rounds).'; return; }
