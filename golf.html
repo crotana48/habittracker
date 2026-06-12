@@ -1,0 +1,2101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d11">
+<!-- PWA-ready: add <link rel="manifest"> + service worker registration here later.
+     Data layer (GolfDB) is fully separate from the UI layer to make that painless. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Golf">
+<title>Golf Tracker</title>
+<style>
+  :root {
+    --bg:        #0d0d11;
+    --bg2:       #131319;
+    --bg3:       #1c1c26;
+    --card:      #17171f;
+    --card2:     #1f1f2b;
+    --border:    #2a2a38;
+    --border2:   #34344a;
+    --text:      #e8e8f0;
+    --text2:     #9a9ab2;
+    --text3:     #5e5e76;
+    --green:     #4ade80;  --green2: #22c55e;
+    --green-dim: rgba(74,222,128,0.08);
+    --amber:     #fb923c;  --amber2: #f97316;
+    --amber-dim: rgba(251,146,60,0.10);
+    --red:       #f87171;  --red2: #ef4444;
+    --red-dim:   rgba(248,113,113,0.07);
+    --blue:      #60a5fa;
+    --blue-dim:  rgba(96,165,250,0.10);
+    --purple:    #a78bfa;
+    --purple-dim:rgba(167,139,250,0.10);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px; line-height: 1.45; }
+  button { font-family: inherit; color: inherit; }
+
+  /* ── Header ── */
+  .app-header { position: sticky; top: 0; z-index: 40; display: flex; align-items: center;
+    justify-content: space-between; padding: 12px 16px; background: rgba(19,19,25,0.92);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+  .app-title { font-weight: 800; font-size: 17px; letter-spacing: 0.3px; }
+  .app-title .flag-emoji { margin-right: 6px; }
+  .sync-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3);
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+  .sync-pill.s-synced  { color: var(--green); }  .sync-pill.s-synced .sync-dot  { background: var(--green); }
+  .sync-pill.s-syncing { color: var(--blue); }   .sync-pill.s-syncing .sync-dot { background: var(--blue); animation: pulse 1s infinite; }
+  .sync-pill.s-error   { color: var(--red); }    .sync-pill.s-error .sync-dot   { background: var(--red); }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+
+  /* ── Layout ── */
+  main { max-width: 520px; margin: 0 auto; padding: 14px 14px calc(86px + var(--sab)); }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px; margin-bottom: 12px; }
+  .card-title { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--text3); margin: 0 0 10px; display: flex; align-items: center; justify-content: space-between; }
+  .muted { color: var(--text2); } .dim { color: var(--text3); }
+  .small { font-size: 12px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .spread { justify-content: space-between; }
+  .grow { flex: 1; min-width: 0; }
+
+  /* ── Bottom tab bar ── */
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid;
+    grid-template-columns: repeat(4, 1fr); background: rgba(19,19,25,0.95);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border); padding-bottom: var(--sab); }
+  .tabbtn { background: none; border: none; padding: 9px 0 7px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    color: var(--text3); font-size: 11px; font-weight: 600; min-height: 56px; }
+  .tabbtn .ticon { font-size: 21px; line-height: 1; filter: grayscale(1) opacity(0.55); }
+  .tabbtn.active { color: var(--green); }
+  .tabbtn.active .ticon { filter: none; }
+
+  /* ── Buttons & inputs ── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border2); border-radius: 12px;
+    color: var(--text); font-size: 15px; font-weight: 600; padding: 12px 16px;
+    min-height: 48px; cursor: pointer; }
+  .btn:active { background: var(--card2); }
+  .btn-primary { background: var(--green2); border-color: var(--green2); color: #06250f; }
+  .btn-primary:active { background: var(--green); }
+  .btn-danger { color: var(--red); border-color: rgba(248,113,113,0.4); background: var(--red-dim); }
+  .btn-big { width: 100%; min-height: 54px; font-size: 16px; }
+  .btn-sm { min-height: 38px; padding: 7px 12px; font-size: 13px; border-radius: 10px; }
+  .btn-ghost { background: none; border-color: transparent; color: var(--text2); }
+  input[type=text], input[type=password], input[type=number], input[type=date], select, textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 10px;
+    color: var(--text); font-size: 16px; padding: 11px 12px; font-family: inherit;
+    -webkit-appearance: none; appearance: none; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green2); }
+  textarea { resize: vertical; min-height: 64px; }
+  label.fld { display: block; margin-bottom: 10px; }
+  label.fld > span { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+  select { background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239a9ab2' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+  /* segmented control */
+  .seg { display: flex; background: var(--bg3); border: 1px solid var(--border2); border-radius: 11px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; background: none; border: none; border-radius: 8px; padding: 9px 4px;
+    font-size: 14px; font-weight: 600; color: var(--text2); cursor: pointer; min-height: 40px; }
+  .seg button.on { background: var(--card2); color: var(--text); box-shadow: 0 0 0 1px var(--border2); }
+  .seg button.on.good { color: var(--green); }
+  .seg button.on.bad { color: var(--red); }
+
+  /* chips / badges */
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600;
+    border-radius: 999px; padding: 3px 9px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); }
+  .chip.green { color: var(--green); background: var(--green-dim); border-color: rgba(74,222,128,0.25); }
+  .chip.amber { color: var(--amber); background: var(--amber-dim); border-color: rgba(251,146,60,0.3); }
+  .chip.red   { color: var(--red); background: var(--red-dim); border-color: rgba(248,113,113,0.3); }
+  .chip.blue  { color: var(--blue); background: var(--blue-dim); border-color: rgba(96,165,250,0.3); }
+  .chip.purple{ color: var(--purple); background: var(--purple-dim); border-color: rgba(167,139,250,0.3); }
+
+  /* ── Hero (handicap index) ── */
+  .hero { text-align: center; padding: 20px 14px 14px; }
+  .hero-label { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; color: var(--text3); }
+  .hero-label .chip { margin-left: 6px; vertical-align: 1px; }
+  .hero-index { font-size: 64px; font-weight: 800; line-height: 1.05; letter-spacing: -1px;
+    font-variant-numeric: tabular-nums; margin: 6px 0 0; }
+  .hero-sub { color: var(--text2); font-size: 13px; margin-top: 2px; }
+  .hero svg { width: 100%; height: 46px; margin-top: 10px; }
+  .hero .capnote { margin-top: 8px; }
+
+  /* ── Round cards ── */
+  .round-card { display: flex; align-items: center; gap: 12px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 9px; cursor: pointer; }
+  .round-card.counting { border-color: rgba(74,222,128,0.45); background: linear-gradient(var(--green-dim), transparent 70%), var(--card); }
+  .rc-gross { font-size: 26px; font-weight: 800; min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+  .rc-gross .topar { display: block; font-size: 12px; font-weight: 700; }
+  .topar.under { color: var(--green); } .topar.over { color: var(--text2); } .topar.even { color: var(--blue); }
+  .rc-main { flex: 1; min-width: 0; }
+  .rc-course { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-sub { font-size: 12px; color: var(--text3); margin-top: 1px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .rc-diff { text-align: right; }
+  .rc-diff .dval { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .rc-diff .dlbl { font-size: 10px; color: var(--text3); letter-spacing: 0.6px; }
+  .star { color: var(--green); font-size: 13px; }
+
+  /* ── Score entry screen ── */
+  .screen { position: fixed; inset: 0; z-index: 60; background: var(--bg); display: none;
+    flex-direction: column; overscroll-behavior: contain; }
+  .screen.open { display: flex; }
+  .screen-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    border-bottom: 1px solid var(--border); background: var(--bg2); }
+  .screen-head .x { background: var(--bg3); border: 1px solid var(--border2); border-radius: 10px;
+    width: 42px; height: 42px; font-size: 19px; cursor: pointer; flex: none; }
+  .screen-head .t { flex: 1; min-width: 0; }
+  .screen-head .t b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .screen-head .t span { font-size: 12px; color: var(--text3); }
+  .screen-body { flex: 1; overflow-y: auto; padding: 14px 14px calc(16px + var(--sab)); }
+  .screen-foot { padding: 10px 14px calc(12px + var(--sab)); border-top: 1px solid var(--border); background: var(--bg2); }
+
+  /* hole entry */
+  .hole-head { text-align: center; margin: 2px 0 4px; }
+  .hole-head .hnum { font-size: 30px; font-weight: 800; }
+  .hole-head .hmeta { color: var(--text2); font-size: 14px; margin-top: 1px; }
+  .score-row { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 12px 0 6px; }
+  .stepbtn { width: 86px; height: 86px; border-radius: 22px; background: var(--bg3);
+    border: 1px solid var(--border2); font-size: 38px; font-weight: 700; color: var(--text);
+    cursor: pointer; flex: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  .stepbtn:active { background: var(--card2); border-color: var(--green2); }
+  .score-display { width: 110px; text-align: center; }
+  .score-display .num { font-size: 72px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .score-display .rel { font-size: 14px; font-weight: 700; margin-top: 2px; min-height: 20px; }
+  .nav-row { display: flex; gap: 10px; margin: 14px 0 4px; }
+  .nav-row .btn { flex: none; width: 64px; font-size: 20px; }
+  .nav-row .btn-next { flex: 1; position: relative; overflow: hidden; }
+  .btn-next .autobar { position: absolute; left: 0; bottom: 0; top: 0; width: 0; background: rgba(6,37,15,0.25); pointer-events: none; }
+  .btn-next.auto .autobar { width: 100%; transition: width 1.4s linear; }
+
+  /* details (putts / FIR / GIR / penalties) */
+  details.xtras { margin-top: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; }
+  details.xtras summary { list-style: none; cursor: pointer; padding: 12px 14px; font-weight: 700;
+    font-size: 13px; color: var(--text2); display: flex; justify-content: space-between; align-items: center; }
+  details.xtras summary::-webkit-details-marker { display: none; }
+  details.xtras summary:after { content: "▾"; color: var(--text3); }
+  details.xtras[open] summary:after { content: "▴"; }
+  .xtras-body { padding: 2px 14px 14px; display: grid; gap: 12px; }
+  .xrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .xrow > span { font-size: 14px; color: var(--text2); font-weight: 600; }
+  .mini-step { display: flex; align-items: center; gap: 0; }
+  .mini-step button { width: 46px; height: 44px; background: var(--bg3); border: 1px solid var(--border2);
+    font-size: 20px; font-weight: 700; color: var(--text); cursor: pointer; }
+  .mini-step button:first-child { border-radius: 10px 0 0 10px; }
+  .mini-step button:last-child { border-radius: 0 10px 10px 0; }
+  .mini-step .v { min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    background: var(--bg3); border-top: 1px solid var(--border2); border-bottom: 1px solid var(--border2);
+    font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .xrow .seg { min-width: 158px; }
+
+  /* hole strip */
+  .strip { display: flex; gap: 5px; overflow-x: auto; padding: 10px 2px 6px; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .strip .h { flex: none; width: 34px; height: 44px; border-radius: 9px; background: var(--bg3);
+    border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center;
+    justify-content: center; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .strip .h .n { font-size: 10px; color: var(--text3); }
+  .strip .h .s { font-size: 15px; font-weight: 800; }
+  .strip .h.cur { border-color: var(--green2); background: var(--green-dim); }
+  .strip .h.under .s { color: var(--green); }
+  .strip .h.dbl .s { color: var(--red); }
+  .strip .h.empty .s { color: var(--text3); }
+  .running { text-align: center; font-size: 14px; color: var(--text2); font-weight: 600; margin-top: 4px; }
+
+  /* review */
+  .rev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .rev-cell { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+  .rev-cell .k { font-size: 11px; color: var(--text3); font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+  .rev-cell .v { font-size: 22px; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .rev-cell .v small { font-size: 13px; color: var(--text2); font-weight: 600; }
+
+  /* ── Course manager ── */
+  .course-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .course-item:last-child { border-bottom: none; }
+  .tee-block { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .holegrid { display: grid; grid-template-columns: 34px repeat(9, 1fr); gap: 4px; margin-top: 8px; font-size: 12px; align-items: center; }
+  .holegrid input { padding: 8px 2px; text-align: center; font-size: 14px; border-radius: 7px; }
+  .holegrid .hg-lbl { color: var(--text3); font-weight: 700; font-size: 10px; }
+  .holegrid .hg-num { text-align: center; color: var(--text3); font-weight: 700; }
+
+  /* ── Range ── */
+  .stat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat-tile { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
+  .stat-tile .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat-tile .k { font-size: 10.5px; color: var(--text3); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; margin-top: 1px; }
+  .focus-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .focus-chips .fchip { border: 1px solid var(--border2); background: var(--bg3); color: var(--text2);
+    border-radius: 999px; padding: 9px 14px; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 40px; }
+  .focus-chips .fchip.on { border-color: var(--green2); color: var(--green); background: var(--green-dim); }
+  .stars { display: flex; gap: 6px; }
+  .stars button { background: none; border: none; font-size: 30px; cursor: pointer; padding: 2px; line-height: 1;
+    color: var(--text3); filter: grayscale(1) opacity(0.5); }
+  .stars button.on { filter: none; color: var(--amber); }
+  .range-item { display: flex; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .range-item:last-child { border-bottom: none; }
+  .ri-icon { width: 40px; height: 40px; flex: none; border-radius: 11px; background: var(--blue-dim);
+    display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .bar-row .bl { width: 86px; flex: none; font-size: 12px; color: var(--text2); font-weight: 600; }
+  .bar-row .track { flex: 1; height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; }
+  .bar-row .fill { height: 100%; border-radius: 4px; background: var(--blue); }
+  .bar-row .bv { width: 30px; flex: none; text-align: right; font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; }
+  .week-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .week-row:last-child { border-bottom: none; }
+  .week-row .wl { width: 76px; flex: none; font-size: 12px; color: var(--text2); font-weight: 600; }
+  .week-dots { display: flex; gap: 5px; flex: 1; }
+  .wdot { width: 20px; height: 20px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--border);
+    font-size: 9px; color: var(--text3); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .wdot.round { background: var(--green-dim); border-color: rgba(74,222,128,0.5); color: var(--green); }
+  .wdot.range { background: var(--blue-dim); border-color: rgba(96,165,250,0.5); color: var(--blue); }
+  .wdot.both { background: var(--purple-dim); border-color: rgba(167,139,250,0.6); color: var(--purple); }
+  .week-row .wsum { font-size: 11.5px; color: var(--text3); flex: none; text-align: right; }
+
+  /* ── Stats ── */
+  .kv-row { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .kv-row:last-child { border-bottom: none; }
+  .kv-row .k { color: var(--text2); }
+  .kv-row .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .holeavg { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin-top: 8px; }
+  .holeavg .ha { border-radius: 7px; padding: 5px 0 4px; text-align: center; background: var(--bg3); border: 1px solid var(--border); }
+  .holeavg .ha .n { font-size: 9px; color: var(--text3); font-weight: 700; }
+  .holeavg .ha .v { font-size: 12.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ha.g0 .v { color: var(--green); } .ha.g1 .v { color: var(--text); } .ha.g2 .v { color: var(--amber); } .ha.g3 .v { color: var(--red); }
+  .chart-svg { width: 100%; height: 150px; display: block; }
+
+  /* ── Overlays / modals ── */
+  .modal-ov { position: fixed; inset: 0; z-index: 80; background: rgba(5,5,8,0.72); display: none;
+    align-items: flex-end; justify-content: center; }
+  .modal-ov.open { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border2); border-radius: 18px 18px 0 0;
+    width: 100%; max-width: 520px; padding: 18px 16px calc(18px + var(--sab)); max-height: 86vh; overflow-y: auto; }
+  @media (min-width: 521px) { .modal-ov { align-items: center; } .modal { border-radius: 18px; padding-bottom: 18px; } }
+  .modal h3 { margin: 0 0 6px; font-size: 17px; }
+  .modal .msg { color: var(--text2); font-size: 14px; margin-bottom: 16px; }
+  .modal .btns { display: flex; gap: 10px; }
+  .modal .btns .btn { flex: 1; }
+
+  .empty { text-align: center; color: var(--text3); padding: 26px 10px; font-size: 14px; }
+  .empty .big { font-size: 34px; margin-bottom: 6px; filter: grayscale(0.4); }
+  .banner { border-radius: 12px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; display: none; }
+  .banner.show { display: block; }
+  .banner.warn { background: var(--amber-dim); border: 1px solid rgba(251,146,60,0.35); color: var(--amber); }
+  .banner .btn-sm { margin-top: 8px; }
+  .footer-note { color: var(--text3); font-size: 11.5px; text-align: center; padding: 4px 18px 10px; line-height: 1.6; }
+  .ch-big { font-size: 40px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+  .list-plain { margin: 0; padding: 0; list-style: none; }
+  h4.sec { font-size: 13px; color: var(--text2); margin: 16px 0 8px; }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="app-title"><span class="flag-emoji">⛳️</span>Golf Tracker</div>
+  <button class="sync-pill" id="syncPill" onclick="showTab('settings')"><span class="sync-dot"></span> Sync off</button>
+</header>
+
+<main>
+  <div class="banner warn" id="storageBanner">Browser storage is unavailable — changes will not persist on this device.</div>
+
+  <!-- ════════ ROUNDS TAB ════════ -->
+  <section class="tab active" id="tab-rounds">
+    <div class="card hero">
+      <div class="hero-label">HANDICAP INDEX <span class="chip amber">UNOFFICIAL</span></div>
+      <div class="hero-index" id="heroIndex">—</div>
+      <div class="hero-sub" id="heroSub"></div>
+      <svg id="heroSpark" viewBox="0 0 300 46" preserveAspectRatio="none"></svg>
+      <div class="capnote" id="heroCapNote" style="display:none"></div>
+    </div>
+
+    <div class="card" id="chCalcCard">
+      <div class="card-title">Course handicap today</div>
+      <div class="grid2" style="margin-bottom:10px">
+        <select id="chCourse" onchange="renderCHCalc()"></select>
+        <select id="chTee" onchange="renderCHCalc()"></select>
+      </div>
+      <div class="ch-big" id="chResult">—</div>
+      <div class="small dim" style="text-align:center" id="chDetail"></div>
+    </div>
+
+    <button class="btn btn-primary btn-big" id="btnNewRound" onclick="openRoundEditor(null)">＋ New round</button>
+    <div style="height:12px"></div>
+    <div id="roundList"></div>
+  </section>
+
+  <!-- ════════ RANGE TAB ════════ -->
+  <section class="tab" id="tab-range">
+    <div class="card">
+      <div class="card-title">Practice</div>
+      <div class="stat-tiles">
+        <div class="stat-tile"><div class="v" id="rsWeek">0</div><div class="k">this week</div></div>
+        <div class="stat-tile"><div class="v" id="rsStreak">0</div><div class="k">week streak</div></div>
+        <div class="stat-tile"><div class="v" id="rsAvg">0</div><div class="k">avg / wk</div></div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-big" onclick="openRangeEditor(null)">＋ Log range session</button>
+    <div style="height:12px"></div>
+    <div class="card">
+      <div class="card-title">Focus areas · last 30 days</div>
+      <div id="focusDist"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Weekly activity</div>
+      <div id="weeklyView"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Sessions</div>
+      <div id="rangeList"></div>
+    </div>
+  </section>
+
+  <!-- ════════ STATS TAB ════════ -->
+  <section class="tab" id="tab-stats">
+    <div id="statsBody"></div>
+  </section>
+
+  <!-- ════════ SETTINGS TAB ════════ -->
+  <section class="tab" id="tab-settings">
+    <div class="card">
+      <div class="card-title">Courses <button class="btn btn-sm" onclick="openCourseEditor(null)">＋ Add</button></div>
+      <div id="courseList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Preferences</div>
+      <label class="fld"><span>Default course</span><select id="defaultCourseSel" onchange="setDefaultCourse(this.value)"></select></label>
+      <div class="xrow"><span>Auto-advance after score entry</span>
+        <div class="seg" style="min-width:120px" id="autoAdvSeg">
+          <button onclick="setAutoAdv(true)">On</button><button onclick="setAutoAdv(false)">Off</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cloud sync · GitHub Gist</div>
+      <div class="banner warn" id="conflictBanner">
+        Remote data is newer than this device. Pull it, or force-push to overwrite the cloud copy.
+        <div class="row">
+          <button class="btn btn-sm" onclick="Sync.manualPull()">Pull remote</button>
+          <button class="btn btn-sm btn-danger" onclick="Sync.forcePush()">Force push</button>
+        </div>
+      </div>
+      <label class="fld"><span>GitHub token (needs the <b>gist</b> scope — stays on this device)</span>
+        <input type="password" id="syncToken" autocomplete="off" placeholder="ghp_…"></label>
+      <label class="fld"><span>Gist ID (blank = create one on connect)</span>
+        <input type="text" id="syncGist" autocomplete="off" spellcheck="false" placeholder="auto-created"></label>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn btn-sm btn-primary grow" onclick="connectSync()">Connect</button>
+        <button class="btn btn-sm grow" onclick="disconnectSync()">Disconnect</button>
+      </div>
+      <div class="row">
+        <button class="btn btn-sm grow" onclick="Sync.manualPush()">Push now ↑</button>
+        <button class="btn btn-sm grow" onclick="Sync.manualPull()">Pull now ↓</button>
+      </div>
+      <div class="small dim" id="syncStatusLine" style="margin-top:10px">Not connected.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Backup</div>
+      <div class="row">
+        <button class="btn btn-sm grow" onclick="exportBackup()">Export JSON</button>
+        <button class="btn btn-sm grow" onclick="document.getElementById('importFile').click()">Import JSON</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
+    </div>
+
+    <div class="card">
+      <div class="card-title">Danger zone</div>
+      <button class="btn btn-sm btn-danger" onclick="resetAll()">Erase all data on this device</button>
+    </div>
+
+    <div class="footer-note">
+      Handicap index is <b>unofficial</b> (not GHIN-posted). Engine follows the 2024 World Handicap System with these
+      intentional deviations: no PCC (needs field data), no exceptional-score reduction, and when 9 holes are played on
+      an 18-hole-rated tee the 9-hole rating is approximated as half the 18-hole rating. 9-hole rounds are converted
+      using the USGA expected-score method (0.52 × index + 1.2).
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="tabbtn active" data-tab="rounds" onclick="showTab('rounds')"><span class="ticon">⛳️</span>Rounds</button>
+  <button class="tabbtn" data-tab="range" onclick="showTab('range')"><span class="ticon">🎯</span>Range</button>
+  <button class="tabbtn" data-tab="stats" onclick="showTab('stats')"><span class="ticon">📈</span>Stats</button>
+  <button class="tabbtn" data-tab="settings" onclick="showTab('settings')"><span class="ticon">⚙️</span>Settings</button>
+</nav>
+
+<!-- ════════ ROUND EDITOR (full-screen) ════════ -->
+<div class="screen" id="roundEditor">
+  <div class="screen-head">
+    <button class="x" onclick="closeRoundEditor()">✕</button>
+    <div class="t"><b id="reTitle">New round</b><span id="reSubtitle"></span></div>
+    <button class="btn btn-sm" id="btnReview" style="display:none" onclick="showReview()">Review</button>
+  </div>
+  <div class="screen-body">
+
+    <div id="reSetup">
+      <label class="fld"><span>Date</span><input type="date" id="reDate"></label>
+      <label class="fld"><span>Course</span><select id="reCourse" onchange="reCourseChanged()"></select></label>
+      <label class="fld"><span>Tee</span><select id="reTee" onchange="reTeeChanged()"></select></label>
+      <label class="fld"><span>Holes</span>
+        <div class="seg" id="reHolesSeg"></div>
+      </label>
+      <div style="height:8px"></div>
+      <button class="btn btn-primary btn-big" id="btnStartRound" onclick="startScoring()">Start scoring ▸</button>
+      <div class="empty" id="reNoCourses" style="display:none">
+        <div class="big">🏌️</div>No courses yet.<br>
+        <button class="btn btn-sm" style="margin-top:10px" onclick="closeRoundEditor();showTab('settings');openCourseEditor(null)">Add a course first</button>
+      </div>
+    </div>
+
+    <div id="rePlay" style="display:none">
+      <div class="hole-head">
+        <div class="hnum" id="reHoleNum">Hole 1</div>
+        <div class="hmeta" id="reHoleMeta">Par 4 · SI 7</div>
+      </div>
+      <div class="score-row">
+        <button class="stepbtn" id="btnScMinus" onclick="bumpScore(-1)">−</button>
+        <div class="score-display">
+          <div class="num" id="reScore">4</div>
+          <div class="rel" id="reScoreRel"></div>
+        </div>
+        <button class="stepbtn" id="btnScPlus" onclick="bumpScore(1)">＋</button>
+      </div>
+      <div class="nav-row">
+        <button class="btn" onclick="gotoHole(RE.cur-1)">‹</button>
+        <button class="btn btn-primary btn-next" id="btnNextHole" onclick="nextHole()"><span class="autobar"></span><span id="nextLabel">Next hole ▸</span></button>
+      </div>
+      <details class="xtras" id="reXtras">
+        <summary>Putts · Fairway · GIR · Penalties</summary>
+        <div class="xtras-body">
+          <div class="xrow"><span>Putts</span>
+            <div class="mini-step"><button onclick="bumpX('putts',-1)">−</button><div class="v" id="rePutts">—</div><button onclick="bumpX('putts',1)">＋</button></div></div>
+          <div class="xrow" id="rowFIR"><span>Fairway</span>
+            <div class="seg" id="reFIR">
+              <button onclick="setX('fir',true)">✓ Hit</button><button onclick="setX('fir',false)">✗ Miss</button><button onclick="setX('fir',null)">—</button>
+            </div></div>
+          <div class="xrow"><span>Green in reg.</span>
+            <div class="seg" id="reGIR">
+              <button onclick="setX('gir',true)">✓ Yes</button><button onclick="setX('gir',false)">✗ No</button><button onclick="setX('gir',null)">—</button>
+            </div></div>
+          <div class="xrow"><span>Penalties</span>
+            <div class="mini-step"><button onclick="bumpX('pen',-1)">−</button><div class="v" id="rePen">0</div><button onclick="bumpX('pen',1)">＋</button></div></div>
+        </div>
+      </details>
+      <div class="strip" id="reStrip"></div>
+      <div class="running" id="reRunning"></div>
+    </div>
+
+    <div id="reReview" style="display:none">
+      <div class="rev-grid" id="revGrid"></div>
+      <label class="fld"><span>Notes</span><textarea id="reNotes" placeholder="Wind, swing thoughts, what worked…"></textarea></label>
+      <button class="btn btn-primary btn-big" onclick="saveRoundFinal()">Save round</button>
+      <div style="height:10px"></div>
+      <button class="btn btn-big" onclick="backToPlay()">‹ Back to scorecard</button>
+      <div style="height:10px"></div>
+      <button class="btn btn-big btn-danger" id="btnDeleteRound" style="display:none" onclick="deleteRoundFromEditor()">Delete round</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════ COURSE EDITOR (full-screen) ════════ -->
+<div class="screen" id="courseEditor">
+  <div class="screen-head">
+    <button class="x" onclick="closeCourseEditor()">✕</button>
+    <div class="t"><b id="ceTitle">New course</b><span>Ratings come from the scorecard or course website</span></div>
+    <button class="btn btn-sm btn-primary" onclick="saveCourse()">Save</button>
+  </div>
+  <div class="screen-body">
+    <label class="fld"><span>Course name</span><input type="text" id="ceName" placeholder="Canyon Lakes"></label>
+    <h4 class="sec">Tees</h4>
+    <div id="teeList"></div>
+    <button class="btn btn-sm" onclick="addTee()">＋ Add tee</button>
+    <div style="height:18px"></div>
+    <button class="btn btn-big btn-danger" id="btnDeleteCourse" style="display:none" onclick="deleteCourse()">Delete course</button>
+    <div class="small dim" style="margin-top:12px">Quick add: name, par, rating and slope are enough to post scores.
+      Add hole pars &amp; stroke indexes later for exact net-double-bogey adjustment — until then it’s approximated and flagged ≈.</div>
+  </div>
+</div>
+
+<!-- ════════ RANGE EDITOR (modal sheet) ════════ -->
+<div class="modal-ov" id="rangeEditor">
+  <div class="modal">
+    <h3 id="rgTitle">Log range session</h3>
+    <div class="grid3" style="margin-bottom:10px">
+      <label class="fld" style="grid-column:span 1"><span>Date</span><input type="date" id="rgDate"></label>
+      <label class="fld"><span>Minutes</span><input type="number" id="rgDur" min="0" step="5" inputmode="numeric" placeholder="45"></label>
+      <label class="fld"><span>Balls</span><input type="number" id="rgBalls" min="0" step="10" inputmode="numeric" placeholder="100"></label>
+    </div>
+    <label class="fld"><span>Focus areas</span></label>
+    <div class="focus-chips" id="rgFocus" style="margin:-4px 0 12px"></div>
+    <label class="fld"><span>Drills</span><input type="text" id="rgDrills" placeholder="9-shot drill with 7i"></label>
+    <label class="fld"><span>Session quality</span></label>
+    <div class="stars" id="rgRating" style="margin:-4px 0 12px"></div>
+    <label class="fld"><span>Notes</span><textarea id="rgNotes"></textarea></label>
+    <div class="btns">
+      <button class="btn btn-danger" id="btnDeleteRange" style="display:none" onclick="deleteRange()">Delete</button>
+      <button class="btn" onclick="closeRangeEditor()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRange()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CONFIRM MODAL ════════ -->
+<div class="modal-ov" id="confirmOverlay" style="z-index:100">
+  <div class="modal">
+    <h3 id="confirmTitle"></h3>
+    <div class="msg" id="confirmMsg"></div>
+    <div class="btns">
+      <button class="btn" id="confirmNo">Cancel</button>
+      <button class="btn btn-primary" id="confirmYes">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ STORAGE RECOVERY ════════ -->
+<div class="modal-ov" id="recoveryOverlay" style="z-index:110">
+  <div class="modal">
+    <h3>Stored data couldn’t be read</h3>
+    <div class="msg">The saved data on this device is corrupted. Download the raw contents first so nothing is lost,
+      then reset the app (or pull from cloud sync afterwards).</div>
+    <div class="btns">
+      <button class="btn" onclick="downloadRaw()">Download raw</button>
+      <button class="btn btn-danger" onclick="resetCorrupt()">Reset app</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   DATA LAYER  (no DOM access — PWA/service-worker friendly)
+   Working store: localStorage key golf_v1 (one JSON object).
+   Device-local keys (never synced/exported):
+     golf_sync_token, golf_sync_gist, golf_updated_at, golf_remote_seen
+   ============================================================ */
+const LS_KEY = 'golf_v1';
+
+// localStorage may be unavailable (private mode) — degrade to an in-memory shim.
+const store = (() => {
+  try { const t = '__golf_t'; localStorage.setItem(t, '1'); localStorage.removeItem(t); return localStorage; }
+  catch { const m = new Map(); return {
+    getItem: k => m.has(k) ? m.get(k) : null,
+    setItem: (k, v) => m.set(k, String(v)),
+    removeItem: k => m.delete(k),
+    _shim: true };
+  }
+})();
+
+function uuid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+  });
+}
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function blankData() {
+  return { version: 1, courses: [], rounds: [], rangeSessions: [],
+    settings: { defaultCourseId: null, gistId: '', theme: 'dark', autoAdvance: true } };
+}
+
+let DATA = null;
+let CORRUPT_RAW = null; // raw string preserved when parse fails
+
+function loadData() {
+  const raw = store.getItem(LS_KEY);
+  if (raw === null) { DATA = blankData(); return; }
+  try {
+    const d = JSON.parse(raw);
+    if (!d || typeof d !== 'object' || !Array.isArray(d.courses) || !Array.isArray(d.rounds)) throw new Error('bad shape');
+    if (!Array.isArray(d.rangeSessions)) d.rangeSessions = [];
+    if (!d.settings || typeof d.settings !== 'object') d.settings = blankData().settings;
+    if (d.settings.autoAdvance === undefined) d.settings.autoAdvance = true;
+    DATA = d;
+  } catch {
+    CORRUPT_RAW = raw;
+    DATA = blankData();
+    document.getElementById('recoveryOverlay').classList.add('open');
+  }
+}
+
+// Every mutation funnels through persist(): write-through + sync mark + recalc + re-render.
+let CACHE = null; // recalcAll output, invalidated on every persist
+function persist() {
+  CACHE = null;
+  store.setItem(LS_KEY, JSON.stringify(DATA));
+  store.setItem('golf_updated_at', Date.now().toString());
+  if (typeof Sync !== 'undefined') Sync.schedulePush();
+}
+function calc() {
+  if (!CACHE) CACHE = Engine.recalcAll(DATA);
+  return CACHE;
+}
+function courseById(id) { return DATA.courses.find(c => c.id === id) || null; }
+function teeById(course, id) { return course ? (course.tees.find(t => t.id === id) || null) : null; }
+
+/* ============================================================
+   HANDICAP ENGINE — 2024 World Handicap System
+   Pure functions only (no DOM, no storage) so they run in Node
+   for unit tests — see golf_engine_tests.mjs.
+
+   Verified against USGA published material (June 2026):
+   · Score Differential = (113 / slope) × (AGS − course rating), 1 dp.
+   · 9-hole → 18-hole differential (2024 revision): 9-hole differential
+     + expected differential, where expected = 0.52 × HI + 1.2.
+     USGA worked example reproduced in tests: HI 14.0, 9-hole diff 7.2
+     → 18-hole diff 15.7.
+   · Players with no index yet: holes capped at par + 5; 9-hole rounds
+     wait (status "pending") until an index exists, then convert.
+   Intentional deviations (shown in Settings): no PCC, no exceptional-
+   score reduction, 9-on-18-tee rating approximated as half.
+   ============================================================ */
+/* ENGINE-START */
+const Engine = (() => {
+
+  const round1 = x => Math.round(x * 10) / 10;
+  const DAY = 86400000;
+
+  // Course Handicap (WHS Rule 6.1a), rounded to nearest whole number.
+  function courseHandicap(hi, slope, cr, par) {
+    return Math.round(hi * (slope / 113) + (cr - par));
+  }
+
+  // Handicap strokes received on a hole. ch may exceed n or be negative (plus player).
+  // si = stroke index rank within the n holes being played (1..n).
+  function strokesOnHole(ch, si, n) {
+    if (ch >= 0) return Math.floor(ch / n) + ((ch % n) >= si ? 1 : 0);
+    const m = -ch; // plus players give strokes back starting at the easiest hole (highest SI)
+    return -(Math.floor(m / n) + (si > n - (m % n) ? 1 : 0));
+  }
+
+  // Net double bogey adjustment (WHS Rule 3.1).
+  // holes: [{par, si, score}] (si = rank 1..n). ch === null → no index yet → cap par + 5.
+  // Returns { ags, adjustedHoles } where adjustedHoles counts holes that were capped.
+  function adjustedGross(holes, ch) {
+    let ags = 0, adjustedHoles = 0;
+    const n = holes.length;
+    for (const h of holes) {
+      const cap = (ch === null || ch === undefined)
+        ? h.par + 5
+        : h.par + 2 + strokesOnHole(ch, h.si, n);
+      const counted = Math.min(h.score, cap);
+      if (counted < h.score) adjustedHoles++;
+      ags += counted;
+    }
+    return { ags, adjustedHoles };
+  }
+
+  // 18-hole (or 9-hole, with 9-hole rating) Score Differential. PCC intentionally omitted.
+  function differential(ags, cr, slope) {
+    return round1((113 / slope) * (ags - cr));
+  }
+
+  // 2024 expected-score method: expected 9-hole differential for a player at the given index.
+  function expected9(hi) { return 0.52 * hi + 1.2; }
+
+  // Combine a (rounded) 9-hole differential with the expected unplayed 9.
+  function differentialFrom9(diff9, hi) { return round1(diff9 + expected9(hi)); }
+
+  // Handicap Index from chronological differentials (oldest → newest).
+  // Uses the most recent 20; WHS small-sample table below that. null if < 3.
+  function indexFromDifferentials(diffs) {
+    const n = diffs.length;
+    if (n < 3) return null;
+    const recent = diffs.slice(-20);
+    const sorted = [...recent].sort((a, b) => a - b);
+    const m = recent.length;
+    let count, adj = 0;
+    if (m >= 20) count = 8;
+    else if (m === 19) count = 7;
+    else if (m >= 17) count = 6;
+    else if (m >= 15) count = 5;
+    else if (m >= 12) count = 4;
+    else if (m >= 9) count = 3;
+    else if (m >= 7) count = 2;
+    else if (m === 6) { count = 2; adj = -1.0; }
+    else if (m === 5) count = 1;
+    else if (m === 4) { count = 1; adj = -1.0; }
+    else { count = 1; adj = -2.0; } // m === 3
+    const avg = sorted.slice(0, count).reduce((a, b) => a + b, 0) / count + adj;
+    return Math.min(54.0, round1(avg));
+  }
+
+  // Soft cap (50% of increase beyond Low HI + 3.0) and hard cap (Low HI + 5.0).
+  function applyCaps(calc, lowHI) {
+    if (lowHI === null || lowHI === undefined || calc === null) return { index: calc, cap: null };
+    let v = calc, cap = null;
+    if (v > lowHI + 3.0) { v = lowHI + 3.0 + 0.5 * (v - (lowHI + 3.0)); cap = 'soft'; }
+    if (v > lowHI + 5.0) { v = lowHI + 5.0; cap = 'hard'; }
+    return { index: round1(v), cap };
+  }
+
+  /* ---- helpers that turn stored course/round data into engine inputs ---- */
+
+  // Even par split used when a tee has no hole-by-hole pars (quick-add).
+  function approxHolePars(par, n) {
+    const base = Math.floor(par / n), rem = par - base * n;
+    return Array.from({ length: n }, (_, i) => base + (i < rem ? 1 : 0));
+  }
+
+  // Stroke indexes when unknown: hardest = longest. Pars descending, ties by hole order.
+  function approxStrokeIndexes(pars) {
+    const order = pars.map((p, i) => ({ p, i })).sort((a, b) => b.p - a.p || a.i - b.i);
+    const si = new Array(pars.length);
+    order.forEach((h, rank) => { si[h.i] = rank + 1; });
+    return si;
+  }
+
+  // Re-rank a subset of 18-hole stroke indexes to 1..9 for a 9-hole round.
+  function rerankSI(siSubset) {
+    const order = siSubset.map((s, i) => ({ s, i })).sort((a, b) => a.s - b.s);
+    const out = new Array(siSubset.length);
+    order.forEach((h, rank) => { out[h.i] = rank + 1; });
+    return out;
+  }
+
+  // Resolve the hole set a round was played on. Returns { pars, sis, cr, slope, par, flags }
+  // or null if the tee can't rate this round.
+  function resolveHoles(tee, round) {
+    const flags = [];
+    const teeHoles = tee.holes || 18;
+    let pars = (Array.isArray(tee.holePars) && tee.holePars.length === teeHoles) ? tee.holePars.slice() : null;
+    if (!pars) { pars = approxHolePars(tee.par, teeHoles); flags.push('approx-pars'); }
+    let sis = (Array.isArray(tee.holeHandicaps) && tee.holeHandicaps.length === teeHoles) ? tee.holeHandicaps.slice() : null;
+    if (!sis) { sis = approxStrokeIndexes(pars); flags.push('approx-si'); }
+
+    if (round.holesPlayed === 18) {
+      if (teeHoles !== 18) return null;
+      return { pars, sis, cr: tee.courseRating, slope: tee.slopeRating, par: tee.par, flags };
+    }
+    // 9-hole round
+    if (teeHoles === 9) {
+      return { pars, sis: rerankSI(sis), cr: tee.courseRating, slope: tee.slopeRating, par: tee.par, flags };
+    }
+    // 9 holes on an 18-hole tee: front (start 1) or back (start 10); rating halved (approximation).
+    const start = round.nineStart === 10 ? 9 : 0;
+    pars = pars.slice(start, start + 9);
+    sis = rerankSI(sis.slice(start, start + 9));
+    flags.push('approx-9rating');
+    return { pars, sis, cr: tee.courseRating / 2, slope: tee.slopeRating, par: pars.reduce((a, b) => a + b, 0), flags };
+  }
+
+  /* ---- full recalculation pipeline ----
+     Deterministic chronological walk. For each round, the player's index *at that
+     point in the record* drives net double bogey and 9-hole conversion. 9-hole
+     rounds played before an index exists stay "pending" and convert as soon as
+     one is established. Low HI (for caps) starts once 20 differentials exist.   */
+  function recalcAll(data) {
+    const perRound = {};
+    const courseMap = {};
+    for (const c of (data.courses || [])) { for (const t of (c.tees || [])) courseMap[t.id] = { course: c, tee: t }; }
+
+    const rounds = (data.rounds || []).slice().sort((a, b) =>
+      (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.createdAt || 0) - (b.createdAt || 0)));
+
+    const record = [];        // { id, t(ms), seq, dateStr, diff }
+    const lowHistory = [];    // walk-time Low HI candidates { t, hi } — only once 20+ diffs exist
+    const pending = [];       // 9-hole rounds waiting for a first index
+    let currentHI = null, seq = 0;
+
+    function lowHIat(lows, t) {
+      let low = null;
+      for (const e of lows) if (e.t >= t - 365 * DAY && e.t <= t && (low === null || e.hi < low)) low = e.hi;
+      return low;
+    }
+
+    // currentHI here is the posting-time index (drives NDB caps and 9-hole conversion).
+    function pushDiff(id, dateStr, diff) {
+      const t = Date.parse(dateStr + 'T12:00:00');
+      record.push({ id, t, seq: seq++, dateStr, diff });
+      record.sort((a, b) => a.t - b.t || a.seq - b.seq);
+      const raw = indexFromDifferentials(record.map(r => r.diff));
+      if (raw !== null) {
+        const capped = applyCaps(raw, lowHIat(lowHistory, t));
+        currentHI = capped.index;
+        if (record.length >= 20) lowHistory.push({ t, hi: currentHI });
+      }
+    }
+
+    function processRound(r) {
+      const res = { status: 'rated', flags: [], diff: null, gross: null, toPar: null, ags: null, counting: false };
+      perRound[r.id] = res;
+      const hit = courseMap[r.teeId];
+      if (!hit) { res.status = 'error'; res.flags.push('missing-tee'); return; }
+      const tee = hit.tee;
+      const n = r.holesPlayed === 9 ? 9 : 18;
+      const scores = Array.isArray(r.scores) ? r.scores.slice(0, n) : [];
+      if (scores.length < n || scores.some(s => !(s >= 1))) { res.status = 'incomplete'; res.entered = scores.filter(s => s >= 1).length; computePartial(r, res, scores); return; }
+
+      const rh = resolveHoles(tee, r);
+      if (!rh) { res.status = 'error'; res.flags.push('tee-mismatch'); return; }
+      res.flags.push(...rh.flags);
+      res.gross = scores.reduce((a, b) => a + b, 0);
+      res.toPar = res.gross - rh.par;
+
+      const holes = scores.map((s, i) => ({ par: rh.pars[i], si: rh.sis[i], score: s }));
+
+      if (n === 18) {
+        const ch = currentHI === null ? null : courseHandicap(currentHI, rh.slope, rh.cr, rh.par);
+        if (ch === null) res.flags.push('par5cap');
+        const ag = adjustedGross(holes, ch);
+        res.ags = ag.ags; res.adjustedHoles = ag.adjustedHoles;
+        res.diff = differential(ag.ags, rh.cr, rh.slope);
+        pushDiff(r.id, r.date, res.diff);
+      } else {
+        if (currentHI === null) { res.status = 'pending'; pending.push(r); return; }
+        const ch9 = Math.round((currentHI / 2) * (rh.slope / 113) + (rh.cr - rh.par));
+        const ag = adjustedGross(holes, ch9);
+        res.ags = ag.ags; res.adjustedHoles = ag.adjustedHoles;
+        const d9 = differential(ag.ags, rh.cr, rh.slope);
+        res.diff9 = d9;
+        res.diff = differentialFrom9(d9, currentHI);
+        res.flags.push('nine-converted');
+        pushDiff(r.id, r.date, res.diff);
+      }
+      // a fresh index may unlock earlier pending 9-hole rounds
+      if (currentHI !== null && pending.length) {
+        const q = pending.splice(0);
+        for (const p of q) { delete perRound[p.id]; processRound(p); }
+      }
+    }
+
+    function computePartial(r, res, scores) {
+      const hit = courseMap[r.teeId]; if (!hit) return;
+      const rh = resolveHoles(hit.tee, r); if (!rh) return;
+      let g = 0, p = 0;
+      scores.forEach((s, i) => { if (s >= 1) { g += s; p += rh.pars[i]; } });
+      res.gross = g || null; res.toPar = g ? g - p : null;
+    }
+
+    for (const r of rounds) processRound(r);
+
+    // mark the differentials that count toward the current index
+    const recent = record.slice(-20);
+    if (recent.length >= 3) {
+      const m = recent.length;
+      let count;
+      if (m >= 20) count = 8; else if (m === 19) count = 7; else if (m >= 17) count = 6;
+      else if (m >= 15) count = 5; else if (m >= 12) count = 4; else if (m >= 9) count = 3;
+      else if (m >= 6) count = 2; else count = 1;
+      [...recent].sort((a, b) => a.diff - b.diff).slice(0, count)
+        .forEach(e => { if (perRound[e.id]) perRound[e.id].counting = true; });
+    }
+
+    // Rebuild the index history over the final record in clean date order, so the
+    // trend (and the published index) is consistent even when pending 9-hole rounds
+    // were converted out of order during the walk.
+    const indexHistory = [];
+    const lows = [];
+    let finalHI = null, capInfo = null;
+    record.forEach((e, k) => {
+      const raw = indexFromDifferentials(record.slice(0, k + 1).map(x => x.diff));
+      if (raw === null) return;
+      const low = lowHIat(lows, e.t);
+      const capped = applyCaps(raw, low);
+      finalHI = capped.index;
+      capInfo = capped.cap ? { cap: capped.cap, raw, lowHI: low } : null;
+      indexHistory.push({ date: e.dateStr, index: finalHI });
+      if (k + 1 >= 20) lows.push({ t: e.t, hi: finalHI });
+    });
+
+    return {
+      perRound, indexHistory,
+      index: finalHI,
+      postedCount: record.length,
+      pendingCount: rounds.filter(r => perRound[r.id] && perRound[r.id].status === 'pending').length,
+      capInfo,
+      lowHI: record.length ? lowHIat(lows, record[record.length - 1].t) : null
+    };
+  }
+
+  return { round1, courseHandicap, strokesOnHole, adjustedGross, differential, expected9,
+    differentialFrom9, indexFromDifferentials, applyCaps, approxHolePars, approxStrokeIndexes,
+    rerankSI, resolveHoles, recalcAll };
+})();
+/* ENGINE-END */
+
+/* ============================================================
+   CLOUD SYNC — GitHub Gist backend, ported from habit_tracker.html.
+   One file (golf_tracker.json) inside a private gist; can share the
+   same gist as the other trackers since each app owns its own file.
+   Envelope: { v:1, updatedAt:<ms>, payload:<DATA object> }
+   Conflict policy: auto-push refuses to clobber a remote that this
+   device hasn't seen (golf_remote_seen) and surfaces a banner.
+   ============================================================ */
+const Sync = (() => {
+  const FILENAME = 'golf_tracker.json';
+  let pushTimer = null, busy = false;
+  const cfg = () => ({ token: store.getItem('golf_sync_token') || '', gist: store.getItem('golf_sync_gist') || '' });
+  const enabled = () => !!cfg().token;
+  const localStamp = () => parseInt(store.getItem('golf_updated_at') || '0', 10);
+  const remoteSeen = () => parseInt(store.getItem('golf_remote_seen') || '0', 10);
+
+  function setStatus(s, msg) {
+    const pill = document.getElementById('syncPill');
+    pill.classList.remove('s-synced', 's-syncing', 's-error');
+    const label = { off: 'Sync off', synced: 'Synced', syncing: 'Syncing…', error: 'Sync error', offline: 'Offline' }[s] || 'Sync';
+    pill.innerHTML = '<span class="sync-dot"></span> ' + label;
+    if (s === 'synced') pill.classList.add('s-synced');
+    else if (s === 'syncing') pill.classList.add('s-syncing');
+    else if (s === 'error' || s === 'offline') pill.classList.add('s-error');
+    if (msg) pill.title = msg;
+    const line = document.getElementById('syncStatusLine');
+    if (line && msg) { line.textContent = msg; line.style.color = s === 'error' ? 'var(--red)' : s === 'synced' ? 'var(--green)' : 'var(--text2)'; }
+  }
+  function showConflict(show) { document.getElementById('conflictBanner').classList.toggle('show', show); }
+
+  async function api(url, opts = {}) {
+    const res = await fetch(url, { ...opts, headers: { 'Authorization': 'token ' + cfg().token, 'Accept': 'application/vnd.github+json', ...(opts.headers || {}) } });
+    if (res.status === 401) throw new Error('Token rejected (check the gist scope).');
+    if (!res.ok) throw new Error('GitHub error ' + res.status);
+    return res.json();
+  }
+  async function ensureGist() {
+    let { gist } = cfg();
+    if (gist) return gist;
+    const j = await api('https://api.github.com/gists', { method: 'POST', body: JSON.stringify({
+      description: 'Golf tracker sync', public: false,
+      files: { [FILENAME]: { content: JSON.stringify({ v: 1, updatedAt: 0, payload: null }) } }
+    }) });
+    store.setItem('golf_sync_gist', j.id);
+    const gi = document.getElementById('syncGist'); if (gi) gi.value = j.id;
+    return j.id;
+  }
+  async function fetchRemote() {
+    const { gist } = cfg(); if (!gist) return null;
+    const j = await api('https://api.github.com/gists/' + gist);
+    const f = j.files && j.files[FILENAME];
+    if (!f) return null;
+    let content = f.content;
+    if (f.truncated && f.raw_url) content = await (await fetch(f.raw_url)).text();
+    try { return JSON.parse(content); } catch { return null; }
+  }
+  async function doPush() {
+    const gist = await ensureGist();
+    const stamp = localStamp();
+    await api('https://api.github.com/gists/' + gist, { method: 'PATCH', body: JSON.stringify({
+      files: { [FILENAME]: { content: JSON.stringify({ v: 1, updatedAt: stamp, payload: DATA }) } }
+    }) });
+    store.setItem('golf_remote_seen', String(stamp));
+    showConflict(false);
+  }
+  // Push that refuses to overwrite remote changes this device has never seen.
+  async function guardedPush() {
+    const remote = await fetchRemote();
+    if (remote && remote.updatedAt > remoteSeen() && remote.updatedAt > localStamp()) {
+      showConflict(true);
+      throw new Error('Remote is newer — pull first (Settings → Cloud sync).');
+    }
+    await doPush();
+  }
+  function applyRemote(remote) {
+    DATA = remote.payload;
+    if (!DATA.settings) DATA.settings = blankData().settings;
+    CACHE = null;
+    store.setItem(LS_KEY, JSON.stringify(DATA));
+    store.setItem('golf_updated_at', String(remote.updatedAt));
+    store.setItem('golf_remote_seen', String(remote.updatedAt));
+    showConflict(false);
+    renderAll();
+  }
+
+  function schedulePush() {
+    if (!enabled()) return;
+    if (!navigator.onLine) { setStatus('offline', "Offline — changes will sync when you reconnect."); return; }
+    setStatus('syncing');
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(async () => {
+      try { await guardedPush(); setStatus('synced', 'Last synced ' + new Date().toLocaleTimeString()); }
+      catch (e) { setStatus('error', e.message || String(e)); }
+    }, 2500);
+  }
+  async function init() {
+    if (!enabled()) { setStatus('off', 'Not connected.'); return; }
+    if (!navigator.onLine) { setStatus('offline', 'Offline — using local data.'); return; }
+    setStatus('syncing');
+    try {
+      const remote = await fetchRemote();
+      if (remote && remote.payload && remote.updatedAt > localStamp()) {
+        applyRemote(remote);
+        setStatus('synced', 'Pulled latest from cloud');
+      } else if (DATA.rounds.length || DATA.courses.length || DATA.rangeSessions.length) {
+        await guardedPush();
+        setStatus('synced', 'Local data pushed to cloud');
+      } else { setStatus('synced', 'Connected'); }
+    } catch (e) { setStatus('error', e.message || String(e)); }
+  }
+  async function poll() { // tab regained focus — adopt newer remote if any
+    if (!enabled() || !navigator.onLine || busy) return;
+    busy = true;
+    try {
+      const remote = await fetchRemote();
+      if (remote && remote.payload && remote.updatedAt > localStamp() + 1) {
+        applyRemote(remote);
+        setStatus('synced', 'Updated from another device');
+      }
+    } catch { /* keep working locally */ } finally { busy = false; }
+  }
+  async function manualPush() {
+    if (!enabled()) { setStatus('error', 'Connect first (token above).'); return; }
+    setStatus('syncing');
+    try { await guardedPush(); setStatus('synced', 'Pushed ' + new Date().toLocaleTimeString()); }
+    catch (e) { setStatus('error', e.message || String(e)); }
+  }
+  async function forcePush() {
+    if (!enabled()) return;
+    if (!(await confirmDlg('Force push?', 'This overwrites the cloud copy with this device’s data. The newer remote data will be lost.', 'Overwrite cloud'))) return;
+    setStatus('syncing');
+    try { await doPush(); setStatus('synced', 'Force-pushed ' + new Date().toLocaleTimeString()); }
+    catch (e) { setStatus('error', e.message || String(e)); }
+  }
+  async function manualPull() {
+    if (!enabled()) { setStatus('error', 'Connect first (token above).'); return; }
+    setStatus('syncing');
+    try {
+      const remote = await fetchRemote();
+      if (!remote || !remote.payload) { setStatus('synced', 'Nothing in the cloud yet.'); return; }
+      if (localStamp() > remote.updatedAt &&
+          !(await confirmDlg('Pull older data?', 'This device has newer changes than the cloud copy. Pulling will replace them.', 'Replace local'))) {
+        setStatus('synced', 'Pull cancelled.'); return;
+      }
+      applyRemote(remote);
+      setStatus('synced', 'Pulled ' + new Date().toLocaleTimeString());
+    } catch (e) { setStatus('error', e.message || String(e)); }
+  }
+  return { init, poll, schedulePush, manualPush, manualPull, forcePush, setStatus, cfg, enabled };
+})();
+
+function connectSync() {
+  const token = document.getElementById('syncToken').value.trim();
+  const gist = document.getElementById('syncGist').value.trim();
+  if (!token) { Sync.setStatus('error', 'Paste a GitHub token first.'); return; }
+  store.setItem('golf_sync_token', token);
+  if (gist) store.setItem('golf_sync_gist', gist); else store.removeItem('golf_sync_gist');
+  Sync.init();
+}
+function disconnectSync() {
+  store.removeItem('golf_sync_token');
+  store.removeItem('golf_sync_gist');
+  document.getElementById('syncToken').value = '';
+  document.getElementById('syncGist').value = '';
+  Sync.setStatus('off', 'Disconnected from this device. Cloud data is untouched.');
+}
+
+/* ============================================================
+   UI HELPERS
+   ============================================================ */
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function fmtToPar(tp) {
+  if (tp === null || tp === undefined) return '';
+  return tp === 0 ? 'E' : (tp > 0 ? '+' + tp : String(tp));
+}
+function toParClass(tp) { return tp === 0 ? 'even' : (tp < 0 ? 'under' : 'over'); }
+function fmtDate(d) {
+  const dt = new Date(d + 'T12:00:00');
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: dt.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+}
+function fmtIndex(i) { return i === null ? '—' : (i < 0 ? '+' + Math.abs(i).toFixed(1) : i.toFixed(1)); }
+
+let confirmResolve = null;
+function confirmDlg(title, msg, yesLabel = 'OK') {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmYes').textContent = yesLabel;
+  document.getElementById('confirmOverlay').classList.add('open');
+  return new Promise(res => { confirmResolve = res; });
+}
+document.getElementById('confirmYes').onclick = () => { document.getElementById('confirmOverlay').classList.remove('open'); confirmResolve && confirmResolve(true); };
+document.getElementById('confirmNo').onclick = () => { document.getElementById('confirmOverlay').classList.remove('open'); confirmResolve && confirmResolve(false); };
+
+/* ── Tabs ── */
+let currentTab = 'rounds';
+function showTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
+  document.querySelectorAll('.tabbtn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  renderTab(name);
+  window.scrollTo(0, 0);
+}
+function renderTab(name) {
+  if (name === 'rounds') renderRounds();
+  else if (name === 'range') renderRange();
+  else if (name === 'stats') renderStats();
+  else if (name === 'settings') renderSettings();
+}
+function renderAll() { renderTab(currentTab); }
+
+/* ============================================================
+   ROUNDS TAB
+   ============================================================ */
+function renderRounds() {
+  const r = calc();
+  // hero
+  const hero = document.getElementById('heroIndex');
+  const sub = document.getElementById('heroSub');
+  hero.textContent = fmtIndex(r.index);
+  hero.style.color = r.index === null ? 'var(--text3)' : 'var(--text)';
+  if (r.index === null) {
+    sub.textContent = r.postedCount + ' of 3 rounds posted' + (r.pendingCount ? ' · ' + r.pendingCount + ' nine-hole waiting' : '');
+  } else {
+    sub.textContent = r.postedCount + ' scores posted' + (r.lowHI !== null ? ' · low index ' + fmtIndex(r.lowHI) : '');
+  }
+  const capEl = document.getElementById('heroCapNote');
+  if (r.capInfo) {
+    capEl.style.display = '';
+    capEl.innerHTML = '<span class="chip amber">' + (r.capInfo.cap === 'hard' ? 'Hard cap' : 'Soft cap') +
+      ' applied — uncapped ' + fmtIndex(r.capInfo.raw) + '</span>';
+  } else capEl.style.display = 'none';
+  drawSpark(r.indexHistory);
+
+  renderCHSelects();
+  renderCHCalc();
+
+  // round list
+  const list = document.getElementById('roundList');
+  const rounds = DATA.rounds.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.createdAt || 0) - (a.createdAt || 0)));
+  if (!rounds.length) {
+    list.innerHTML = '<div class="empty"><div class="big">🏌️</div>No rounds yet.<br>Add a course in Settings, then log your first round.</div>';
+    return;
+  }
+  list.innerHTML = rounds.map(rd => {
+    const res = r.perRound[rd.id] || { status: 'error', flags: [] };
+    const course = courseById(rd.courseId);
+    const tee = teeById(course, rd.teeId);
+    const cname = course ? course.name : 'Deleted course';
+    const tname = tee ? tee.name : '?';
+    let grossHtml, diffHtml = '', chips = [];
+    if (res.status === 'incomplete') {
+      grossHtml = '<div class="rc-gross">' + (res.gross ?? '·') + '<span class="topar over">thru ' + (res.entered || 0) + '</span></div>';
+      chips.push('<span class="chip amber">in progress</span>');
+    } else {
+      grossHtml = '<div class="rc-gross">' + (res.gross ?? '—') +
+        '<span class="topar ' + toParClass(res.toPar) + '">' + fmtToPar(res.toPar) + '</span></div>';
+    }
+    if (res.status === 'rated' && res.diff !== null) {
+      diffHtml = '<div class="rc-diff"><div class="dval">' + res.diff.toFixed(1) + '</div><div class="dlbl">DIFF' +
+        (rd.holesPlayed === 9 ? ' ·9→18' : '') + '</div></div>';
+    } else if (res.status === 'pending') {
+      chips.push('<span class="chip blue">9-hole · waits for index</span>');
+    } else if (res.status === 'error') {
+      chips.push('<span class="chip red">' + (res.flags.includes('missing-tee') ? 'tee deleted' : 'unrated') + '</span>');
+    }
+    if (res.counting) chips.push('<span class="chip green">★ counts</span>');
+    if (res.flags && res.flags.some(f => f.startsWith('approx'))) chips.push('<span class="chip" title="Approximate hole data">≈</span>');
+    return '<div class="round-card' + (res.counting ? ' counting' : '') + '" onclick="openRoundEditor(\'' + rd.id + '\')">' +
+      grossHtml +
+      '<div class="rc-main"><div class="rc-course">' + esc(cname) + ' · ' + esc(tname) + '</div>' +
+      '<div class="rc-sub">' + fmtDate(rd.date) + ' · ' + rd.holesPlayed + ' holes ' + chips.join(' ') + '</div></div>' +
+      diffHtml + '</div>';
+  }).join('');
+}
+
+function drawSpark(history) {
+  const svg = document.getElementById('heroSpark');
+  const pts = history.slice().sort((a, b) => a.date < b.date ? -1 : 1).map(h => h.index);
+  if (pts.length < 2) { svg.innerHTML = ''; svg.style.display = pts.length ? '' : 'none'; return; }
+  svg.style.display = '';
+  const W = 300, H = 46, P = 4;
+  const min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
+  const x = i => P + i * (W - 2 * P) / (pts.length - 1);
+  const y = v => H - P - (v - min) / span * (H - 2 * P); // downward slope = improving index
+  const path = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  svg.innerHTML = '<path d="' + path + '" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>' +
+    '<circle cx="' + x(pts.length - 1) + '" cy="' + y(pts[pts.length - 1]) + '" r="3" fill="var(--green)"/>';
+}
+
+/* ── Course-handicap calculator ── */
+function renderCHSelects() {
+  const cSel = document.getElementById('chCourse'), tSel = document.getElementById('chTee');
+  const keepC = cSel.value || DATA.settings.defaultCourseId;
+  cSel.innerHTML = DATA.courses.length
+    ? DATA.courses.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('')
+    : '<option value="">No courses</option>';
+  if (keepC && courseById(keepC)) cSel.value = keepC;
+  const course = courseById(cSel.value);
+  const keepT = tSel.value;
+  tSel.innerHTML = course && course.tees.length
+    ? course.tees.map(t => '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('')
+    : '<option value="">—</option>';
+  if (keepT && course && teeById(course, keepT)) tSel.value = keepT;
+}
+function renderCHCalc() {
+  const r = calc();
+  const out = document.getElementById('chResult'), det = document.getElementById('chDetail');
+  const course = courseById(document.getElementById('chCourse').value);
+  const tee = teeById(course, document.getElementById('chTee').value);
+  if (!course || !tee) {
+    // course changed → repopulate tees
+    if (course && !tee) { renderCHSelects(); return renderCHCalc(); }
+    out.textContent = '—'; det.textContent = 'Add a course to use the calculator.'; return;
+  }
+  if (r.index === null) { out.textContent = '—'; det.textContent = 'Needs a handicap index (3 rounds).'; return; }
+  const ch = Engine.courseHandicap(r.index, tee.slopeRating, tee.courseRating, tee.par);
+  out.textContent = ch > 0 ? String(ch) : (ch === 0 ? '0' : '+' + Math.abs(ch));
+  out.style.color = 'var(--green)';
+  det.textContent = 'strokes at ' + tee.name + ' (' + tee.courseRating.toFixed(1) + ' / ' + tee.slopeRating + ', par ' + tee.par + ')';
+}
+
+/* ============================================================
+   ROUND EDITOR — score entry (designed thumb-first)
+   New rounds are persisted as soon as scoring starts, so an
+   interrupted session on the course never loses data.
+   ============================================================ */
+let RE = null; // { round (live ref into DATA), course, tee, rh (resolved holes), cur, isNew }
+
+function openRoundEditor(roundId) {
+  const scr = document.getElementById('roundEditor');
+  scr.classList.add('open');
+  document.getElementById('reSetup').style.display = '';
+  document.getElementById('rePlay').style.display = 'none';
+  document.getElementById('reReview').style.display = 'none';
+  document.getElementById('btnReview').style.display = 'none';
+
+  if (roundId) {
+    const round = DATA.rounds.find(r => r.id === roundId);
+    if (!round) return;
+    const course = courseById(round.courseId), tee = teeById(course, round.teeId);
+    if (!course || !tee) {
+      confirmDlg('Course missing', 'This round references a deleted course/tee, so it can’t be edited or rated. Delete the round?', 'Delete round')
+        .then(yes => { if (yes) { DATA.rounds = DATA.rounds.filter(x => x.id !== roundId); persist(); renderAll(); } closeRoundEditor(true); });
+      RE = null;
+      return;
+    }
+    RE = { round, course, tee, rh: Engine.resolveHoles(tee, round), cur: 0, isNew: false };
+    document.getElementById('reTitle').textContent = 'Edit round';
+    enterPlay(firstEmptyHole());
+    return;
+  }
+
+  // new round — setup state
+  RE = null;
+  document.getElementById('reTitle').textContent = 'New round';
+  document.getElementById('reSubtitle').textContent = '';
+  document.getElementById('reDate').value = todayStr();
+  const noCourses = !DATA.courses.length;
+  document.getElementById('reNoCourses').style.display = noCourses ? '' : 'none';
+  document.getElementById('btnStartRound').style.display = noCourses ? 'none' : '';
+  if (noCourses) return;
+  const cSel = document.getElementById('reCourse');
+  cSel.innerHTML = DATA.courses.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+  if (DATA.settings.defaultCourseId && courseById(DATA.settings.defaultCourseId)) cSel.value = DATA.settings.defaultCourseId;
+  reCourseChanged();
+}
+
+function reCourseChanged() {
+  const course = courseById(document.getElementById('reCourse').value);
+  const tSel = document.getElementById('reTee');
+  tSel.innerHTML = (course && course.tees.length)
+    ? course.tees.map(t => '<option value="' + t.id + '">' + esc(t.name) + ' · ' + t.courseRating.toFixed(1) + '/' + t.slopeRating + '</option>').join('')
+    : '<option value="">No tees on this course</option>';
+  reTeeChanged();
+}
+let reHolesChoice = { holes: 18, nineStart: 1 };
+function reTeeChanged() {
+  const course = courseById(document.getElementById('reCourse').value);
+  const tee = teeById(course, document.getElementById('reTee').value);
+  const seg = document.getElementById('reHolesSeg');
+  if (!tee) { seg.innerHTML = ''; return; }
+  if ((tee.holes || 18) === 9) {
+    reHolesChoice = { holes: 9, nineStart: 1 };
+    seg.innerHTML = '<button class="on">9 holes</button>';
+  } else {
+    seg.innerHTML =
+      '<button id="seg18" onclick="setHolesChoice(18,1)">18</button>' +
+      '<button id="segF9" onclick="setHolesChoice(9,1)">Front 9</button>' +
+      '<button id="segB9" onclick="setHolesChoice(9,10)">Back 9</button>';
+    setHolesChoice(18, 1);
+  }
+}
+function setHolesChoice(holes, nineStart) {
+  reHolesChoice = { holes, nineStart };
+  const m = { seg18: holes === 18, segF9: holes === 9 && nineStart === 1, segB9: holes === 9 && nineStart === 10 };
+  for (const id in m) { const b = document.getElementById(id); if (b) b.classList.toggle('on', m[id]); }
+}
+
+function startScoring() {
+  const course = courseById(document.getElementById('reCourse').value);
+  const tee = teeById(course, document.getElementById('reTee').value);
+  if (!course || !tee) return;
+  const n = reHolesChoice.holes;
+  const round = {
+    id: uuid(), date: document.getElementById('reDate').value || todayStr(),
+    courseId: course.id, teeId: tee.id, holesPlayed: n,
+    nineStart: n === 9 ? reHolesChoice.nineStart : undefined,
+    scores: new Array(n).fill(null), putts: null, fairwaysHit: null, gir: null, penalties: null,
+    notes: '', scoreDifferential: null, createdAt: Date.now()
+  };
+  DATA.rounds.push(round);
+  persist();
+  RE = { round, course, tee, rh: Engine.resolveHoles(tee, round), cur: 0, isNew: true };
+  document.getElementById('reTitle').textContent = 'New round';
+  enterPlay(0);
+}
+
+function firstEmptyHole() {
+  const i = RE.round.scores.findIndex(s => !(s >= 1));
+  return i === -1 ? 0 : i;
+}
+function enterPlay(holeIdx) {
+  document.getElementById('reSetup').style.display = 'none';
+  document.getElementById('reReview').style.display = 'none';
+  document.getElementById('rePlay').style.display = '';
+  document.getElementById('btnReview').style.display = '';
+  document.getElementById('reSubtitle').textContent =
+    RE.course.name + ' · ' + RE.tee.name + ' · ' + fmtDate(RE.round.date);
+  RE.cur = holeIdx;
+  renderPlay();
+}
+
+function holeLabel(i) { // actual hole number on the course
+  const start = RE.round.nineStart === 10 ? 10 : 1;
+  return (RE.round.holesPlayed === 9 ? start : 1) + i;
+}
+function shownScore() { return RE.round.scores[RE.cur] ?? RE.rh.pars[RE.cur]; }
+
+const REL_NAMES = { '-3': 'Albatross', '-2': 'Eagle', '-1': 'Birdie', 0: 'Par', 1: 'Bogey', 2: 'Double bogey', 3: 'Triple bogey' };
+function renderPlay() {
+  const i = RE.cur, n = RE.round.holesPlayed;
+  const par = RE.rh.pars[i], si = RE.rh.sis[i];
+  const approx = RE.rh.flags.includes('approx-pars') || RE.rh.flags.includes('approx-si');
+  document.getElementById('reHoleNum').textContent = 'Hole ' + holeLabel(i);
+  document.getElementById('reHoleMeta').textContent = 'Par ' + par + ' · SI ' + si + (approx ? ' ≈' : '');
+  const committed = RE.round.scores[i] >= 1;
+  const s = shownScore();
+  const scoreEl = document.getElementById('reScore');
+  scoreEl.textContent = s;
+  scoreEl.style.color = committed ? 'var(--text)' : 'var(--text3)';
+  const rel = s - par;
+  const relEl = document.getElementById('reScoreRel');
+  relEl.textContent = committed ? (REL_NAMES[rel] ?? (rel > 0 ? '+' + rel : rel)) : 'tap to confirm par';
+  relEl.style.color = rel < 0 ? 'var(--green)' : rel === 0 ? 'var(--blue)' : rel >= 2 ? 'var(--red)' : 'var(--text2)';
+  document.getElementById('btnScMinus').disabled = s <= 1;
+  document.getElementById('nextLabel').textContent = (i === n - 1) ? 'Review ✓' : 'Next hole ▸';
+
+  // extras
+  const putts = RE.round.putts ? RE.round.putts[i] : null;
+  document.getElementById('rePutts').textContent = putts ?? '—';
+  document.getElementById('rePen').textContent = (RE.round.penalties ? RE.round.penalties[i] : null) ?? 0;
+  document.getElementById('rowFIR').style.display = par === 3 ? 'none' : '';
+  paintSeg('reFIR', RE.round.fairwaysHit ? RE.round.fairwaysHit[i] : null);
+  paintSeg('reGIR', RE.round.gir ? RE.round.gir[i] : null);
+
+  // strip + running
+  const strip = document.getElementById('reStrip');
+  strip.innerHTML = RE.round.scores.map((sc, j) => {
+    const p = RE.rh.pars[j];
+    const has = sc >= 1;
+    const cls = ['h', j === i ? 'cur' : '', !has ? 'empty' : (sc < p ? 'under' : sc >= p + 2 ? 'dbl' : '')].join(' ');
+    return '<div class="' + cls + '" onclick="gotoHole(' + j + ')"><span class="n">' + holeLabel(j) + '</span><span class="s">' + (has ? sc : '·') + '</span></div>';
+  }).join('');
+  const curChip = strip.children[i];
+  if (curChip) curChip.scrollIntoView({ block: 'nearest', inline: 'center' });
+  let g = 0, p = 0, cnt = 0;
+  RE.round.scores.forEach((sc, j) => { if (sc >= 1) { g += sc; p += RE.rh.pars[j]; cnt++; } });
+  document.getElementById('reRunning').textContent = cnt ? ('Thru ' + cnt + ':  ' + g + '  (' + fmtToPar(g - p) + ')') : 'No scores yet';
+}
+function paintSeg(id, val) {
+  const seg = document.getElementById(id);
+  const map = [true, false, null];
+  [...seg.children].forEach((b, k) => {
+    b.classList.toggle('on', val === map[k]);
+    b.classList.toggle('good', val === map[k] && map[k] === true);
+    b.classList.toggle('bad', val === map[k] && map[k] === false);
+  });
+}
+
+function bumpScore(d) {
+  const s = Math.max(1, shownScore() + d);
+  RE.round.scores[RE.cur] = s;
+  persist();
+  renderPlay();
+  armAutoAdvance();
+}
+function ensureArr(field, fill = null) {
+  if (!RE.round[field]) RE.round[field] = new Array(RE.round.holesPlayed).fill(fill);
+  return RE.round[field];
+}
+function bumpX(kind, d) {
+  cancelAutoAdvance();
+  const i = RE.cur;
+  if (kind === 'putts') {
+    const a = ensureArr('putts');
+    a[i] = a[i] === null ? 2 : Math.max(0, a[i] + d);
+  } else {
+    const a = ensureArr('penalties');
+    a[i] = Math.max(0, (a[i] ?? 0) + d);
+  }
+  persist(); renderPlay();
+}
+function setX(kind, val) {
+  cancelAutoAdvance();
+  const a = ensureArr(kind === 'fir' ? 'fairwaysHit' : 'gir');
+  a[RE.cur] = val;
+  persist(); renderPlay();
+}
+
+let autoTimer = null;
+function armAutoAdvance() {
+  if (!DATA.settings.autoAdvance) return;
+  cancelAutoAdvance();
+  const btn = document.getElementById('btnNextHole');
+  void btn.offsetWidth; // restart the CSS width transition
+  btn.classList.add('auto');
+  autoTimer = setTimeout(() => { cancelAutoAdvance(); nextHole(); }, 1500);
+}
+function cancelAutoAdvance() {
+  clearTimeout(autoTimer); autoTimer = null;
+  document.getElementById('btnNextHole').classList.remove('auto');
+}
+
+function nextHole() {
+  cancelAutoAdvance();
+  // commit shown value (an untouched hole confirms as par — fastest path)
+  if (!(RE.round.scores[RE.cur] >= 1)) { RE.round.scores[RE.cur] = shownScore(); persist(); }
+  if (RE.cur >= RE.round.holesPlayed - 1) { showReview(); return; }
+  RE.cur++;
+  renderPlay();
+}
+function gotoHole(i) {
+  cancelAutoAdvance();
+  if (i < 0 || i >= RE.round.holesPlayed) return;
+  RE.cur = i;
+  renderPlay();
+}
+
+function showReview() {
+  cancelAutoAdvance();
+  document.getElementById('rePlay').style.display = 'none';
+  document.getElementById('btnReview').style.display = 'none';
+  document.getElementById('reReview').style.display = '';
+  const r = RE.round;
+  const pars = RE.rh.pars;
+  const done = r.scores.every(s => s >= 1);
+  let g = 0, p = 0;
+  r.scores.forEach((s, j) => { if (s >= 1) { g += s; p += pars[j]; } });
+  const cells = [];
+  cells.push(cell('Gross', done ? g : g + ' <small>thru ' + r.scores.filter(s => s >= 1).length + '</small>'));
+  cells.push(cell('To par', fmtToPar(g - p)));
+  if (r.putts && r.putts.some(v => v !== null)) cells.push(cell('Putts', r.putts.reduce((a, b) => a + (b || 0), 0)));
+  if (r.fairwaysHit && r.fairwaysHit.some(v => v !== null)) {
+    const rec = r.fairwaysHit.filter(v => v !== null);
+    cells.push(cell('Fairways', rec.filter(Boolean).length + ' <small>/ ' + rec.length + '</small>'));
+  }
+  if (r.gir && r.gir.some(v => v !== null)) {
+    const rec = r.gir.filter(v => v !== null);
+    cells.push(cell('GIR', rec.filter(Boolean).length + ' <small>/ ' + rec.length + '</small>'));
+  }
+  if (r.penalties && r.penalties.some(v => v > 0)) cells.push(cell('Penalties', r.penalties.reduce((a, b) => a + (b || 0), 0)));
+  cells.push('<div class="rev-cell"><div class="k">Date</div><input type="date" id="revDate" value="' + r.date + '" style="margin-top:4px;padding:8px 10px"></div>');
+  if (!done) cells.push(cell('Status', '<small>incomplete — won’t be rated until all holes are in</small>'));
+  document.getElementById('revGrid').innerHTML = cells.join('');
+  document.getElementById('reNotes').value = r.notes || '';
+  document.getElementById('btnDeleteRound').style.display = '';
+  function cell(k, v) { return '<div class="rev-cell"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
+}
+function backToPlay() {
+  document.getElementById('reReview').style.display = 'none';
+  enterPlay(RE.cur);
+}
+function saveRoundFinal() {
+  RE.round.notes = document.getElementById('reNotes').value.trim();
+  const d = document.getElementById('revDate').value;
+  if (d) RE.round.date = d;
+  // store the engine's differential on the round for export readability
+  persist();
+  const res = calc().perRound[RE.round.id];
+  RE.round.scoreDifferential = res && res.diff !== null && res.diff !== undefined ? res.diff : null;
+  persist();
+  closeRoundEditor(true);
+}
+async function deleteRoundFromEditor() {
+  if (!(await confirmDlg('Delete round?', 'This removes the round and recalculates your index.', 'Delete'))) return;
+  DATA.rounds = DATA.rounds.filter(x => x.id !== RE.round.id);
+  persist();
+  closeRoundEditor(true);
+}
+function closeRoundEditor(saved) {
+  cancelAutoAdvance();
+  // brand-new round abandoned with no scores → drop the empty draft
+  if (RE && RE.isNew && !saved && RE.round.scores.every(s => !(s >= 1))) {
+    DATA.rounds = DATA.rounds.filter(x => x.id !== RE.round.id);
+    persist();
+  }
+  RE = null;
+  document.getElementById('roundEditor').classList.remove('open');
+  renderAll();
+}
+
+// swipe left/right between holes on the play screen
+(() => {
+  const body = document.querySelector('#roundEditor .screen-body');
+  let x0 = null, y0 = null;
+  body.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  body.addEventListener('touchend', e => {
+    if (x0 === null || !RE || document.getElementById('rePlay').style.display === 'none') return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 60 && Math.abs(dy) < 50) (dx < 0 ? nextHole() : gotoHole(RE.cur - 1));
+    x0 = y0 = null;
+  }, { passive: true });
+})();
+
+/* ============================================================
+   COURSE EDITOR
+   ============================================================ */
+let CE = null; // { id, working: {name, tees:[…]} } — state lives here, DOM is a view
+
+function msgDlg(title, msg) { return confirmDlg(title, msg, 'OK'); }
+
+function openCourseEditor(courseId) {
+  const src = courseId ? courseById(courseId) : null;
+  CE = {
+    id: src ? src.id : null,
+    working: src ? JSON.parse(JSON.stringify({ name: src.name, tees: src.tees })) : { name: '', tees: [] }
+  };
+  CE.working.tees.forEach(t => { t._detail = !!(t.holePars && t.holePars.length); });
+  if (!CE.working.tees.length) addTeeState();
+  document.getElementById('ceTitle').textContent = src ? 'Edit course' : 'New course';
+  document.getElementById('ceName').value = CE.working.name;
+  document.getElementById('btnDeleteCourse').style.display = src ? '' : 'none';
+  ceRenderTees();
+  document.getElementById('courseEditor').classList.add('open');
+}
+function addTeeState() {
+  CE.working.tees.push({ id: uuid(), name: '', holes: 18, par: 72, courseRating: null, slopeRating: null,
+    holePars: null, holeHandicaps: null, _detail: false });
+}
+function addTee() { addTeeState(); ceRenderTees(); }
+function removeTee(ti) { CE.working.tees.splice(ti, 1); ceRenderTees(); }
+function ceSet(ti, field, value) {
+  const t = CE.working.tees[ti];
+  if (field === 'name') t.name = value;
+  else t[field] = value === '' ? null : Number(value);
+}
+function ceSetHoles(ti, n) {
+  const t = CE.working.tees[ti];
+  if (t.holes === n) return;
+  t.holes = n;
+  t.holePars = t.holePars ? resize(t.holePars, n) : null;
+  t.holeHandicaps = t.holeHandicaps ? resize(t.holeHandicaps, n) : null;
+  if (n === 9 && t.par === 72) t.par = 36;
+  if (n === 18 && t.par === 36) t.par = 72;
+  ceRenderTees();
+  function resize(a, len) { const out = a.slice(0, len); while (out.length < len) out.push(null); return out; }
+}
+function ceToggleDetail(ti) {
+  const t = CE.working.tees[ti];
+  t._detail = !t._detail;
+  if (t._detail) {
+    if (!t.holePars) t.holePars = new Array(t.holes).fill(null);
+    if (!t.holeHandicaps) t.holeHandicaps = new Array(t.holes).fill(null);
+  }
+  ceRenderTees();
+}
+function ceSetHole(ti, kind, hi, value) {
+  const t = CE.working.tees[ti];
+  const arr = kind === 'par' ? t.holePars : t.holeHandicaps;
+  arr[hi] = value === '' ? null : Number(value);
+  if (kind === 'par') ceUpdateParSum(ti);
+}
+function ceUpdateParSum(ti) {
+  const t = CE.working.tees[ti];
+  const el = document.getElementById('parsum_' + ti);
+  if (!el || !t.holePars) return;
+  const filled = t.holePars.filter(p => p >= 3);
+  const sum = filled.reduce((a, b) => a + b, 0);
+  el.textContent = filled.length === t.holes ? ('hole pars sum to ' + sum + (sum !== t.par ? ' — tee par is ' + t.par + '!' : ' ✓')) : (filled.length + '/' + t.holes + ' pars entered');
+  el.style.color = (filled.length === t.holes && sum !== t.par) ? 'var(--amber)' : 'var(--text3)';
+}
+function ceAutoSI(ti) {
+  const t = CE.working.tees[ti];
+  const pars = (t.holePars && t.holePars.every(p => p >= 3)) ? t.holePars : Engine.approxHolePars(t.par, t.holes);
+  t.holeHandicaps = Engine.approxStrokeIndexes(pars);
+  ceRenderTees();
+}
+
+function ceRenderTees() {
+  const wrap = document.getElementById('teeList');
+  wrap.innerHTML = CE.working.tees.map((t, ti) => {
+    let detail = '';
+    if (t._detail) {
+      const rows = [];
+      for (let half = 0; half < t.holes / 9; half++) {
+        const cells = [[], [], []];
+        for (let h = half * 9; h < half * 9 + 9; h++) {
+          cells[0].push('<div class="hg-num">' + (h + 1) + '</div>');
+          cells[1].push('<input type="number" inputmode="numeric" min="3" max="6" value="' + (t.holePars[h] ?? '') + '" oninput="ceSetHole(' + ti + ',\'par\',' + h + ',this.value)">');
+          cells[2].push('<input type="number" inputmode="numeric" min="1" max="' + t.holes + '" value="' + (t.holeHandicaps[h] ?? '') + '" oninput="ceSetHole(' + ti + ',\'si\',' + h + ',this.value)">');
+        }
+        rows.push('<div class="holegrid"><div class="hg-lbl">HOLE</div>' + cells[0].join('') +
+          '<div class="hg-lbl">PAR</div>' + cells[1].join('') +
+          '<div class="hg-lbl">SI</div>' + cells[2].join('') + '</div>');
+      }
+      detail = rows.join('') +
+        '<div class="row spread" style="margin-top:8px"><span class="small dim" id="parsum_' + ti + '"></span>' +
+        '<button class="btn btn-sm btn-ghost" onclick="ceAutoSI(' + ti + ')">Auto-fill SI</button></div>';
+    }
+    return '<div class="tee-block">' +
+      '<div class="row" style="margin-bottom:10px">' +
+        '<input type="text" placeholder="Tee name (Blue…)" value="' + esc(t.name) + '" oninput="ceSet(' + ti + ',\'name\',this.value)">' +
+        '<button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="removeTee(' + ti + ')">✕</button></div>' +
+      '<div class="row" style="margin-bottom:10px"><div class="seg grow">' +
+        '<button class="' + (t.holes === 18 ? 'on' : '') + '" onclick="ceSetHoles(' + ti + ',18)">18 holes</button>' +
+        '<button class="' + (t.holes === 9 ? 'on' : '') + '" onclick="ceSetHoles(' + ti + ',9)">9 holes</button></div></div>' +
+      '<div class="grid3">' +
+        '<label class="fld"><span>Par</span><input type="number" inputmode="numeric" value="' + (t.par ?? '') + '" oninput="ceSet(' + ti + ',\'par\',this.value)"></label>' +
+        '<label class="fld"><span>Rating</span><input type="number" inputmode="decimal" step="0.1" placeholder="71.8" value="' + (t.courseRating ?? '') + '" oninput="ceSet(' + ti + ',\'courseRating\',this.value)"></label>' +
+        '<label class="fld"><span>Slope</span><input type="number" inputmode="numeric" placeholder="128" value="' + (t.slopeRating ?? '') + '" oninput="ceSet(' + ti + ',\'slopeRating\',this.value)"></label></div>' +
+      '<button class="btn btn-sm" onclick="ceToggleDetail(' + ti + ')">' + (t._detail ? 'Hide hole detail' : 'Hole-by-hole detail (pars + stroke index)') + '</button>' +
+      detail + '</div>';
+  }).join('');
+  CE.working.tees.forEach((t, ti) => { if (t._detail) ceUpdateParSum(ti); });
+}
+
+async function saveCourse() {
+  const name = document.getElementById('ceName').value.trim();
+  if (!name) return msgDlg('Missing name', 'Give the course a name.');
+  if (!CE.working.tees.length) return msgDlg('No tees', 'Add at least one tee.');
+  const clean = [];
+  for (const t of CE.working.tees) {
+    const label = t.name.trim() || 'tee';
+    if (!t.name.trim()) return msgDlg('Tee name missing', 'Name every tee (Blue, White…).');
+    if (!(t.par >= 27 && t.par <= 90)) return msgDlg('Check par', 'Par for ' + label + ' looks wrong (' + t.par + ').');
+    if (!(t.courseRating >= 40 && t.courseRating <= 90)) return msgDlg('Check rating', 'Course rating for ' + label + ' must be set (e.g. 71.8).');
+    if (!(t.slopeRating >= 55 && t.slopeRating <= 155)) return msgDlg('Check slope', 'Slope for ' + label + ' must be 55–155.');
+    const out = { id: t.id, name: t.name.trim(), holes: t.holes, par: t.par,
+      courseRating: t.courseRating, slopeRating: t.slopeRating, holePars: null, holeHandicaps: null };
+    if (t._detail) {
+      const pars = t.holePars || [], sis = t.holeHandicaps || [];
+      const parsFilled = pars.filter(p => p >= 3 && p <= 6).length;
+      if (parsFilled === t.holes) {
+        out.holePars = pars.slice();
+        const sum = out.holePars.reduce((a, b) => a + b, 0);
+        if (sum !== t.par && !(await confirmDlg('Par mismatch', label + ': hole pars sum to ' + sum + ' but tee par is ' + t.par + '. Save anyway (tee par wins for handicap math)?', 'Save anyway'))) return;
+      } else if (parsFilled > 0) {
+        if (!(await confirmDlg('Incomplete pars', label + ': only ' + parsFilled + '/' + t.holes + ' hole pars entered. Save without hole pars (approximation will be used)?', 'Save without'))) return;
+      }
+      const sisFilled = sis.filter(s => s >= 1 && s <= t.holes);
+      if (sisFilled.length === t.holes && new Set(sisFilled).size === t.holes) {
+        out.holeHandicaps = sis.slice();
+      } else if (sis.some(s => s !== null && s !== undefined)) {
+        if (!(await confirmDlg('Stroke index invalid', label + ': stroke indexes must use each of 1–' + t.holes + ' exactly once. Save without them?', 'Save without'))) return;
+      }
+    }
+    clean.push(out);
+  }
+  if (CE.id) {
+    const c = courseById(CE.id);
+    c.name = name; c.tees = clean;
+  } else {
+    DATA.courses.push({ id: uuid(), name, tees: clean });
+  }
+  persist();
+  closeCourseEditor();
+}
+async function deleteCourse() {
+  const n = DATA.rounds.filter(r => r.courseId === CE.id).length;
+  const msg = n ? n + ' logged round' + (n > 1 ? 's' : '') + ' reference this course and will become unrated. Rounds themselves are kept.' : 'This course has no rounds logged.';
+  if (!(await confirmDlg('Delete course?', msg, 'Delete'))) return;
+  DATA.courses = DATA.courses.filter(c => c.id !== CE.id);
+  if (DATA.settings.defaultCourseId === CE.id) DATA.settings.defaultCourseId = null;
+  persist();
+  closeCourseEditor();
+}
+function closeCourseEditor() {
+  CE = null;
+  document.getElementById('courseEditor').classList.remove('open');
+  renderAll();
+}
+
+/* ============================================================
+   RANGE TAB  (Phase 2)
+   ============================================================ */
+const FOCUS_TAGS = ['Driver', 'Woods', 'Irons', 'Wedges', 'Chipping', 'Bunker', 'Putting'];
+let RG = null; // editing session id or null
+
+function mondayOf(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = (d.getDay() + 6) % 7; // Mon=0
+  d.setDate(d.getDate() - day);
+  return d.toISOString().slice(0, 10);
+}
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function renderRange() {
+  const sessions = DATA.rangeSessions.slice().sort((a, b) => a.date < b.date ? 1 : -1);
+  const thisMon = mondayOf(todayStr());
+
+  // tiles
+  const byWeek = {};
+  sessions.forEach(s => { const w = mondayOf(s.date); (byWeek[w] = byWeek[w] || []).push(s); });
+  document.getElementById('rsWeek').textContent = (byWeek[thisMon] || []).length;
+  let streak = 0, w = thisMon;
+  if (!byWeek[w]) w = addDays(w, -7); // an empty current week doesn't break the streak yet
+  while (byWeek[w]) { streak++; w = addDays(w, -7); }
+  document.getElementById('rsStreak').textContent = streak;
+  const last56 = sessions.filter(s => s.date >= addDays(todayStr(), -55)).length;
+  document.getElementById('rsAvg').textContent = (last56 / 8).toFixed(1);
+
+  // focus distribution (last 30 days)
+  const recent = sessions.filter(s => s.date >= addDays(todayStr(), -29));
+  const counts = {};
+  FOCUS_TAGS.forEach(t => counts[t] = 0);
+  recent.forEach(s => (s.focus || []).forEach(f => { counts[f] = (counts[f] || 0) + 1; }));
+  const maxC = Math.max(1, ...Object.values(counts));
+  document.getElementById('focusDist').innerHTML = recent.length
+    ? Object.keys(counts).map(t =>
+        '<div class="bar-row"><div class="bl">' + t + (counts[t] === 0 ? ' ⚠️' : '') + '</div>' +
+        '<div class="track"><div class="fill" style="width:' + (counts[t] / maxC * 100) + '%"></div></div>' +
+        '<div class="bv">' + counts[t] + '</div></div>').join('') +
+      (Object.values(counts).some(c => c === 0) ? '<div class="small dim" style="margin-top:6px">⚠️ = not practiced in 30 days</div>' : '')
+    : '<div class="empty">No sessions in the last 30 days.</div>';
+
+  // weekly combined view (rounds + range, last 8 weeks)
+  const roundDates = {};
+  DATA.rounds.forEach(r => { roundDates[r.date] = true; });
+  const rangeDates = {};
+  sessions.forEach(s => { rangeDates[s.date] = true; });
+  let weeks = '';
+  for (let i = 0; i < 8; i++) {
+    const mon = addDays(thisMon, -7 * i);
+    let dots = '', nr = 0, ng = 0;
+    for (let dys = 0; dys < 7; dys++) {
+      const d = addDays(mon, dys);
+      const hasR = roundDates[d], hasG = rangeDates[d];
+      if (hasR) nr++; if (hasG) ng++;
+      const cls = hasR && hasG ? 'both' : hasR ? 'round' : hasG ? 'range' : '';
+      dots += '<div class="wdot ' + cls + '">' + 'MTWTFSS'[dys] + '</div>';
+    }
+    nr = DATA.rounds.filter(r => mondayOf(r.date) === mon).length;
+    ng = sessions.filter(s => mondayOf(s.date) === mon).length;
+    const lbl = new Date(mon + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    weeks += '<div class="week-row"><div class="wl">' + (i === 0 ? 'This wk' : lbl) + '</div>' +
+      '<div class="week-dots">' + dots + '</div>' +
+      '<div class="wsum">' + (nr ? nr + ' rd' : '') + (nr && ng ? ' · ' : '') + (ng ? ng + ' rng' : '') + '</div></div>';
+  }
+  document.getElementById('weeklyView').innerHTML = weeks;
+
+  // session list
+  document.getElementById('rangeList').innerHTML = sessions.length ? sessions.slice(0, 40).map(s =>
+    '<div class="range-item" onclick="openRangeEditor(\'' + s.id + '\')">' +
+      '<div class="ri-icon">🎯</div>' +
+      '<div class="grow"><div style="font-weight:700;font-size:14px">' + fmtDate(s.date) +
+        (s.rating ? ' <span style="color:var(--amber);font-size:12px">' + '★'.repeat(s.rating) + '</span>' : '') + '</div>' +
+      '<div class="small dim">' + [(s.durationMin ? s.durationMin + ' min' : ''), (s.ballCount ? s.ballCount + ' balls' : ''),
+        (s.focus || []).join(', ')].filter(Boolean).join(' · ') + '</div></div></div>'
+  ).join('') : '<div class="empty"><div class="big">🎯</div>No range sessions yet.</div>';
+}
+
+function openRangeEditor(id) {
+  RG = id;
+  const s = id ? DATA.rangeSessions.find(x => x.id === id) : null;
+  document.getElementById('rgTitle').textContent = s ? 'Edit session' : 'Log range session';
+  document.getElementById('rgDate').value = s ? s.date : todayStr();
+  document.getElementById('rgDur').value = s && s.durationMin ? s.durationMin : '';
+  document.getElementById('rgBalls').value = s && s.ballCount ? s.ballCount : '';
+  document.getElementById('rgDrills').value = s ? (s.drills || '') : '';
+  document.getElementById('rgNotes').value = s ? (s.notes || '') : '';
+  document.getElementById('btnDeleteRange').style.display = s ? '' : 'none';
+  const focus = new Set(s ? s.focus || [] : []);
+  document.getElementById('rgFocus').innerHTML = FOCUS_TAGS.map(t =>
+    '<button class="fchip' + (focus.has(t) ? ' on' : '') + '" onclick="this.classList.toggle(\'on\')">' + t + '</button>').join('');
+  const rating = s ? s.rating || 0 : 0;
+  document.getElementById('rgRating').innerHTML = [1, 2, 3, 4, 5].map(n =>
+    '<button class="' + (n <= rating ? 'on' : '') + '" data-n="' + n + '" onclick="setStars(' + n + ')">★</button>').join('');
+  document.getElementById('rangeEditor').classList.add('open');
+}
+function setStars(n) {
+  const cur = [...document.querySelectorAll('#rgRating button')].filter(b => b.classList.contains('on')).length;
+  const target = (cur === n) ? 0 : n; // tap the same star again to clear
+  document.querySelectorAll('#rgRating button').forEach(b => b.classList.toggle('on', +b.dataset.n <= target));
+}
+function saveRange() {
+  const s = {
+    id: RG || uuid(),
+    date: document.getElementById('rgDate').value || todayStr(),
+    durationMin: +document.getElementById('rgDur').value || null,
+    ballCount: +document.getElementById('rgBalls').value || null,
+    focus: [...document.querySelectorAll('#rgFocus .fchip.on')].map(b => b.textContent),
+    drills: document.getElementById('rgDrills').value.trim(),
+    rating: [...document.querySelectorAll('#rgRating button')].filter(b => b.classList.contains('on')).length || null,
+    notes: document.getElementById('rgNotes').value.trim()
+  };
+  if (RG) {
+    const i = DATA.rangeSessions.findIndex(x => x.id === RG);
+    if (i >= 0) DATA.rangeSessions[i] = s;
+  } else DATA.rangeSessions.push(s);
+  persist();
+  closeRangeEditor();
+}
+async function deleteRange() {
+  if (!(await confirmDlg('Delete session?', 'Remove this range session?', 'Delete'))) return;
+  DATA.rangeSessions = DATA.rangeSessions.filter(x => x.id !== RG);
+  persist();
+  closeRangeEditor();
+}
+function closeRangeEditor() {
+  RG = null;
+  document.getElementById('rangeEditor').classList.remove('open');
+  renderAll();
+}
+document.getElementById('rangeEditor').addEventListener('click', e => { if (e.target.id === 'rangeEditor') closeRangeEditor(); });
+
+/* ============================================================
+   STATS TAB  (Phase 3)
+   ============================================================ */
+function renderStats() {
+  const r = calc();
+  const body = document.getElementById('statsBody');
+  const rated = DATA.rounds.map(rd => ({ rd, res: r.perRound[rd.id] }))
+    .filter(x => x.res && (x.res.status === 'rated' || x.res.status === 'pending') && x.res.gross !== null)
+    .sort((a, b) => a.rd.date < b.rd.date ? -1 : 1);
+  const full18 = rated.filter(x => x.rd.holesPlayed === 18);
+
+  if (!rated.length) {
+    body.innerHTML = '<div class="empty"><div class="big">📈</div>Stats appear after your first completed round.</div>';
+    return;
+  }
+  let html = '';
+
+  // index trend
+  if (r.indexHistory.length >= 2) {
+    html += '<div class="card"><div class="card-title">Index trend</div>' + lineChart(
+      r.indexHistory.slice().sort((a, b) => a.date < b.date ? -1 : 1).map(h => h.index)) + '</div>';
+  }
+
+  // scoring
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  let rows = '';
+  if (full18.length) {
+    const grosses = full18.map(x => x.res.gross);
+    rows += kv('Avg score (18 holes)', avg(grosses).toFixed(1));
+    rows += kv('Avg to par', '+' + avg(full18.map(x => x.res.toPar)).toFixed(1));
+    rows += kv('Best / worst', Math.min(...grosses) + ' / ' + Math.max(...grosses));
+  }
+  rows += kv('Rounds logged', DATA.rounds.length + ' (' + full18.length + ' × 18, ' + rated.filter(x => x.rd.holesPlayed === 9).length + ' × 9)');
+
+  // par-3/4/5 scoring
+  const parBuckets = { 3: [], 4: [], 5: [] };
+  for (const { rd } of rated) {
+    const course = courseById(rd.courseId); const tee = teeById(course, rd.teeId);
+    if (!tee) continue;
+    const rh = Engine.resolveHoles(tee, rd); if (!rh) continue;
+    rd.scores.forEach((s, i) => { if (s >= 1 && parBuckets[rh.pars[i]]) parBuckets[rh.pars[i]].push(s - rh.pars[i]); });
+  }
+  [3, 4, 5].forEach(p => {
+    if (parBuckets[p].length >= 3) rows += kv('Par-' + p + ' avg', (p + avg(parBuckets[p])).toFixed(2) + '  (+' + avg(parBuckets[p]).toFixed(2) + ')');
+  });
+  html += '<div class="card"><div class="card-title">Scoring</div>' + rows + '</div>';
+
+  // skills (optional per-hole stats)
+  let skills = '';
+  const per18 = (sumFn, holesFn) => { // normalize to per-18-holes
+    let tot = 0, holes = 0;
+    rated.forEach(x => { const v = sumFn(x.rd); if (v !== null) { tot += v; holes += holesFn(x.rd); } });
+    return holes ? (tot / holes * 18) : null;
+  };
+  const putts = per18(rd => rd.putts && rd.putts.some(v => v !== null) ? rd.putts.reduce((a, b) => a + (b || 0), 0) : null,
+                      rd => rd.putts.filter(v => v !== null).length);
+  if (putts !== null) skills += kv('Putts / round', putts.toFixed(1));
+  let fHit = 0, fTot = 0, gHit = 0, gTot = 0, pen = 0, penHoles = 0;
+  rated.forEach(({ rd }) => {
+    (rd.fairwaysHit || []).forEach(v => { if (v !== null && v !== undefined) { fTot++; if (v) fHit++; } });
+    (rd.gir || []).forEach(v => { if (v !== null && v !== undefined) { gTot++; if (v) gHit++; } });
+    if (rd.penalties && rd.penalties.some(v => v > 0)) { pen += rd.penalties.reduce((a, b) => a + (b || 0), 0); penHoles += rd.holesPlayed; }
+  });
+  if (fTot) skills += kv('Fairways hit', Math.round(fHit / fTot * 100) + '%  (' + fHit + '/' + fTot + ')');
+  if (gTot) skills += kv('Greens in regulation', Math.round(gHit / gTot * 100) + '%  (' + gHit + '/' + gTot + ')');
+  if (penHoles) skills += kv('Penalties / round', (pen / penHoles * 18).toFixed(1));
+  if (skills) html += '<div class="card"><div class="card-title">Skills</div>' + skills + '</div>';
+
+  // differential distribution
+  const diffs = Object.values(r.perRound).filter(x => x.diff !== null && x.diff !== undefined).map(x => x.diff);
+  if (diffs.length >= 3) {
+    html += '<div class="card"><div class="card-title">Differential distribution</div>' + histogram(diffs) + '</div>';
+  }
+
+  // course history
+  const courseIds = [...new Set(rated.map(x => x.rd.courseId))].filter(id => courseById(id));
+  if (courseIds.length) {
+    const sel = courseIds.map(id => '<option value="' + id + '"' + (id === statsCourseSel ? ' selected' : '') + '>' + esc(courseById(id).name) + '</option>').join('');
+    html += '<div class="card"><div class="card-title">Course history</div>' +
+      '<select onchange="statsCourseSel=this.value;renderStats()" style="margin-bottom:10px">' + sel + '</select>' +
+      courseHistory(courseIds.includes(statsCourseSel) ? statsCourseSel : courseIds[0], rated) + '</div>';
+  }
+
+  body.innerHTML = html;
+  function kv(k, v) { return '<div class="kv-row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
+}
+let statsCourseSel = null;
+
+function courseHistory(courseId, rated) {
+  const mine = rated.filter(x => x.rd.courseId === courseId);
+  if (!mine.length) return '<div class="empty">No completed rounds here.</div>';
+  const mine18 = mine.filter(x => x.rd.holesPlayed === 18);
+  let html = '<div class="kv-row"><span class="k">Rounds</span><span class="v">' + mine.length + '</span></div>';
+  if (mine18.length) {
+    html += '<div class="kv-row"><span class="k">Avg / best (18)</span><span class="v">' +
+      (mine18.reduce((a, x) => a + x.res.gross, 0) / mine18.length).toFixed(1) + ' / ' + Math.min(...mine18.map(x => x.res.gross)) + '</span></div>';
+  }
+  // hole-by-hole average over par (map all rounds onto course holes 1-18)
+  const sums = new Array(18).fill(0), cnts = new Array(18).fill(0);
+  let pars18 = null;
+  for (const { rd } of mine) {
+    const course = courseById(rd.courseId); const tee = teeById(course, rd.teeId);
+    if (!tee) continue;
+    const rh = Engine.resolveHoles(tee, rd); if (!rh) continue;
+    const off = rd.holesPlayed === 9 && rd.nineStart === 10 ? 9 : 0;
+    rd.scores.forEach((s, i) => { if (s >= 1) { sums[off + i] += s - rh.pars[i]; cnts[off + i]++; } });
+    if (rd.holesPlayed === 18 || !pars18) {
+      pars18 = pars18 || new Array(18).fill(null);
+      rh.pars.forEach((p, i) => { pars18[off + i] = p; });
+    }
+  }
+  const cells = [];
+  for (let i = 0; i < 18; i++) {
+    if (!cnts[i]) { cells.push('<div class="ha"><div class="n">' + (i + 1) + '</div><div class="v">·</div></div>'); continue; }
+    const a = sums[i] / cnts[i];
+    const g = a <= 0.05 ? 'g0' : a <= 0.5 ? 'g1' : a <= 1.0 ? 'g2' : 'g3';
+    cells.push('<div class="ha ' + g + '"><div class="n">' + (i + 1) + '</div><div class="v">' + (a > 0 ? '+' : '') + a.toFixed(1) + '</div></div>');
+  }
+  const anyBack = cnts.slice(9).some(c => c);
+  html += '<div class="small dim" style="margin-top:8px">Avg vs par per hole — find where strokes leak:</div>';
+  html += '<div class="holeavg">' + cells.slice(0, 9).join('') + '</div>';
+  if (anyBack) html += '<div class="holeavg">' + cells.slice(9).join('') + '</div>';
+  return html;
+}
+
+function lineChart(vals) {
+  const W = 320, H = 150, P = 18;
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const x = i => P + i * (W - 2 * P) / Math.max(1, vals.length - 1);
+  const y = v => H - P - (v - min) / span * (H - 2 * P);
+  const path = vals.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  return '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+    '<text x="' + (W - P) + '" y="' + (y(max) + 4) + '" text-anchor="end" fill="var(--text3)" font-size="10">' + fmtIndex(max) + '</text>' +
+    '<text x="' + (W - P) + '" y="' + (y(min) + 4) + '" text-anchor="end" fill="var(--text3)" font-size="10">' + fmtIndex(min) + '</text>' +
+    '<path d="' + path + '" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="' + x(vals.length - 1) + '" cy="' + y(vals[vals.length - 1]) + '" r="3.5" fill="var(--green)"/></svg>';
+}
+function histogram(diffs) {
+  const lo = Math.floor(Math.min(...diffs) / 2) * 2, hi = Math.floor(Math.max(...diffs) / 2) * 2 + 2;
+  const buckets = [];
+  for (let b = lo; b < hi; b += 2) buckets.push({ b, n: diffs.filter(d => d >= b && d < b + 2).length });
+  const maxN = Math.max(...buckets.map(x => x.n), 1);
+  return buckets.map(({ b, n }) =>
+    '<div class="bar-row"><div class="bl">' + b + '–' + (b + 2) + '</div>' +
+    '<div class="track"><div class="fill" style="width:' + (n / maxN * 100) + '%;background:var(--green)"></div></div>' +
+    '<div class="bv">' + n + '</div></div>').join('');
+}
+
+/* ============================================================
+   SETTINGS TAB
+   ============================================================ */
+function renderSettings() {
+  const list = document.getElementById('courseList');
+  list.innerHTML = DATA.courses.length ? DATA.courses.map(c =>
+    '<div class="course-item"><div class="grow"><b>' + esc(c.name) + '</b>' +
+    '<div class="small dim">' + c.tees.map(t => esc(t.name) + ' ' + t.courseRating.toFixed(1) + '/' + t.slopeRating +
+      ((t.holePars && t.holeHandicaps) ? '' : ' ≈')).join(' · ') + '</div></div>' +
+    '<button class="btn btn-sm" onclick="openCourseEditor(\'' + c.id + '\')">Edit</button></div>'
+  ).join('') : '<div class="empty">No courses yet — add your home course.</div>';
+
+  const sel = document.getElementById('defaultCourseSel');
+  sel.innerHTML = '<option value="">None</option>' + DATA.courses.map(c =>
+    '<option value="' + c.id + '"' + (DATA.settings.defaultCourseId === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
+
+  const seg = document.getElementById('autoAdvSeg');
+  seg.children[0].classList.toggle('on', !!DATA.settings.autoAdvance);
+  seg.children[1].classList.toggle('on', !DATA.settings.autoAdvance);
+
+  const { token, gist } = Sync.cfg();
+  document.getElementById('syncToken').value = token;
+  document.getElementById('syncGist').value = gist;
+}
+function setDefaultCourse(id) { DATA.settings.defaultCourseId = id || null; persist(); }
+function setAutoAdv(on) { DATA.settings.autoAdvance = on; persist(); renderSettings(); }
+
+/* ── Backup ── */
+function downloadBlob(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function exportBackup() {
+  downloadBlob('golf_backup_' + todayStr() + '.json', JSON.stringify(DATA, null, 2));
+}
+function importBackup(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if (!d || d.version !== 1 || !Array.isArray(d.courses) || !Array.isArray(d.rounds)) throw new Error('shape');
+      if (!(await confirmDlg('Import backup?', 'Replaces ALL data on this device with the backup (' + d.rounds.length + ' rounds, ' + d.courses.length + ' courses). Sync settings are kept.', 'Replace'))) return;
+      if (!Array.isArray(d.rangeSessions)) d.rangeSessions = [];
+      if (!d.settings) d.settings = blankData().settings;
+      DATA = d;
+      persist();
+      renderAll();
+      msgDlg('Imported', 'Backup restored.');
+    } catch {
+      msgDlg('Import failed', 'That file isn’t a golf-tracker backup (version 1 JSON).');
+    }
+  };
+  reader.readAsText(file);
+}
+async function resetAll() {
+  if (!(await confirmDlg('Erase everything?', 'Deletes all courses, rounds and range sessions on this device. If sync is connected, the empty state will overwrite the cloud copy on the next push. Export a backup first!', 'Erase all'))) return;
+  DATA = blankData();
+  persist();
+  renderAll();
+}
+
+/* ── Corrupt-storage recovery ── */
+function downloadRaw() {
+  if (CORRUPT_RAW) downloadBlob('golf_corrupt_raw.txt', CORRUPT_RAW);
+}
+function resetCorrupt() {
+  store.removeItem(LS_KEY);
+  document.getElementById('recoveryOverlay').classList.remove('open');
+  DATA = blankData();
+  CORRUPT_RAW = null;
+  renderAll();
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+loadData();
+if (store._shim) document.getElementById('storageBanner').classList.add('show');
+renderSettings();   // populate sync fields before first status line
+showTab('rounds');
+Sync.init();
+window.addEventListener('online', () => Sync.init());
+window.addEventListener('offline', () => Sync.enabled() && Sync.setStatus('offline', "Offline — changes will sync when you reconnect."));
+window.addEventListener('focus', () => Sync.poll());
+</script>
+</body>
+</html>
