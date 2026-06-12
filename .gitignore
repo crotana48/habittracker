@@ -10,3 +10,9 @@
 # Personal files not part of the public site (remove a line to publish it)
 debt_tracker.html
 SYNC_SETUP.md
+
+# Bebot Brain lives in its own repo on a separate account — never publish here
+bebot_brain/
+
+# Bebot marketing site deploys to its own repo — never publish here
+bebot_site/
