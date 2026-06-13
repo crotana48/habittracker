@@ -159,11 +159,21 @@
   .screen-body { flex: 1; overflow-y: auto; padding: 14px 14px calc(16px + var(--sab)); }
   .screen-foot { padding: 10px 14px calc(12px + var(--sab)); border-top: 1px solid var(--border); background: var(--bg2); }
 
+  /* course identity: monogram badge, deterministic accent set inline */
+  .cbadge { width: 34px; height: 34px; border-radius: 10px; flex: none; display: flex;
+    align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: 0.5px; }
+
   /* hole entry */
   .hole-head { text-align: center; margin: 2px 0 4px; }
   .hole-head .hnum { font-size: 30px; font-weight: 800; }
+  .hole-head .hnum svg { vertical-align: -2px; margin-right: 7px; }
   .hole-head .hmeta { color: var(--text2); font-size: 14px; margin-top: 1px; }
+  .hole-head .hmeta .hyds { font-size: 17px; font-weight: 800; color: var(--text); }
   .score-row { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 12px 0 6px; }
+  .score-display .num input { width: 100%; font-size: 48px; font-weight: 800; text-align: center;
+    background: var(--bg3); border: 1px solid var(--green2); border-radius: 14px; color: var(--text); padding: 8px 0; }
+  .putts-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0 0; }
+  .putts-row > span { font-size: 14px; font-weight: 600; color: var(--text2); }
   .stepbtn { width: 86px; height: 86px; border-radius: 22px; background: var(--bg3);
     border: 1px solid var(--border2); font-size: 38px; font-weight: 700; color: var(--text);
     cursor: pointer; flex: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
@@ -317,6 +327,15 @@
       <div class="capnote" id="heroCapNote" style="display:none"></div>
     </div>
 
+    <div class="card" id="seedBanner" style="display:none">
+      <div class="card-title">Local courses</div>
+      <div class="small muted" id="seedBannerMsg" style="margin-bottom:10px"></div>
+      <div class="row">
+        <button class="btn btn-sm btn-primary grow" onclick="acceptSeedCourses()">Add them</button>
+        <button class="btn btn-sm grow" onclick="declineSeedCourses()">No thanks</button>
+      </div>
+    </div>
+
     <div class="card" id="chCalcCard">
       <div class="card-title">Course handicap today</div>
       <div class="grid2" style="margin-bottom:10px">
@@ -368,6 +387,9 @@
     <div class="card">
       <div class="card-title">Courses <button class="btn btn-sm" onclick="openCourseEditor(null)">＋ Add</button></div>
       <div id="courseList"></div>
+      <div id="seedSettingsRow" style="display:none;margin-top:10px">
+        <button class="btn btn-sm" style="width:100%" onclick="acceptSeedCourses()">＋ Add the Tri-Cities course pack</button>
+      </div>
     </div>
 
     <div class="card">
@@ -438,6 +460,7 @@
 <div class="screen" id="roundEditor">
   <div class="screen-head">
     <button class="x" onclick="closeRoundEditor()">✕</button>
+    <span class="cbadge" id="reBadge" style="display:none"></span>
     <div class="t"><b id="reTitle">New round</b><span id="reSubtitle"></span></div>
     <button class="btn btn-sm" id="btnReview" style="display:none" onclick="showReview()">Review</button>
   </div>
@@ -466,20 +489,21 @@
       <div class="score-row">
         <button class="stepbtn" id="btnScMinus" onclick="bumpScore(-1)">−</button>
         <div class="score-display">
-          <div class="num" id="reScore">4</div>
+          <div class="num" id="reScore" onclick="editScoreTyped()">4</div>
           <div class="rel" id="reScoreRel"></div>
         </div>
         <button class="stepbtn" id="btnScPlus" onclick="bumpScore(1)">＋</button>
+      </div>
+      <div class="putts-row"><span>Putts</span>
+        <div class="mini-step"><button onclick="bumpX('putts',-1)">−</button><div class="v" id="rePutts">—</div><button onclick="bumpX('putts',1)">＋</button></div>
       </div>
       <div class="nav-row">
         <button class="btn" onclick="gotoHole(RE.cur-1)">‹</button>
         <button class="btn btn-primary btn-next" id="btnNextHole" onclick="nextHole()"><span class="autobar"></span><span id="nextLabel">Next hole ▸</span></button>
       </div>
       <details class="xtras" id="reXtras">
-        <summary>Putts · Fairway · GIR · Penalties</summary>
+        <summary>Fairway · GIR · Penalties</summary>
         <div class="xtras-body">
-          <div class="xrow"><span>Putts</span>
-            <div class="mini-step"><button onclick="bumpX('putts',-1)">−</button><div class="v" id="rePutts">—</div><button onclick="bumpX('putts',1)">＋</button></div></div>
           <div class="xrow" id="rowFIR"><span>Fairway</span>
             <div class="seg" id="reFIR">
               <button onclick="setX('fir',true)">✓ Hit</button><button onclick="setX('fir',false)">✗ Miss</button><button onclick="setX('fir',null)">—</button>
@@ -768,8 +792,9 @@ const Engine = (() => {
     return out;
   }
 
-  // Resolve the hole set a round was played on. Returns { pars, sis, cr, slope, par, flags }
-  // or null if the tee can't rate this round.
+  // Resolve the hole set a round was played on. Returns { pars, sis, yards, cr, slope, par, flags }
+  // or null if the tee can't rate this round. yards is display-only: optional, null when the
+  // tee has no verified per-hole yardages, and never affects the handicap math.
   function resolveHoles(tee, round) {
     const flags = [];
     const teeHoles = tee.holes || 18;
@@ -777,21 +802,23 @@ const Engine = (() => {
     if (!pars) { pars = approxHolePars(tee.par, teeHoles); flags.push('approx-pars'); }
     let sis = (Array.isArray(tee.holeHandicaps) && tee.holeHandicaps.length === teeHoles) ? tee.holeHandicaps.slice() : null;
     if (!sis) { sis = approxStrokeIndexes(pars); flags.push('approx-si'); }
+    let yards = (Array.isArray(tee.holeYards) && tee.holeYards.length === teeHoles) ? tee.holeYards.slice() : null;
 
     if (round.holesPlayed === 18) {
       if (teeHoles !== 18) return null;
-      return { pars, sis, cr: tee.courseRating, slope: tee.slopeRating, par: tee.par, flags };
+      return { pars, sis, yards, cr: tee.courseRating, slope: tee.slopeRating, par: tee.par, flags };
     }
     // 9-hole round
     if (teeHoles === 9) {
-      return { pars, sis: rerankSI(sis), cr: tee.courseRating, slope: tee.slopeRating, par: tee.par, flags };
+      return { pars, sis: rerankSI(sis), yards, cr: tee.courseRating, slope: tee.slopeRating, par: tee.par, flags };
     }
     // 9 holes on an 18-hole tee: front (start 1) or back (start 10); rating halved (approximation).
     const start = round.nineStart === 10 ? 9 : 0;
     pars = pars.slice(start, start + 9);
     sis = rerankSI(sis.slice(start, start + 9));
+    if (yards) yards = yards.slice(start, start + 9);
     flags.push('approx-9rating');
-    return { pars, sis, cr: tee.courseRating / 2, slope: tee.slopeRating, par: pars.reduce((a, b) => a + b, 0), flags };
+    return { pars, sis, yards, cr: tee.courseRating / 2, slope: tee.slopeRating, par: pars.reduce((a, b) => a + b, 0), flags };
   }
 
   /* ---- full recalculation pipeline ----
@@ -1111,6 +1138,33 @@ function fmtDate(d) {
 }
 function fmtIndex(i) { return i === null ? '—' : (i < 0 ? '+' + Math.abs(i).toFixed(1) : i.toFixed(1)); }
 
+/* ── Course identity: deterministic accent + monogram from the name ── */
+function courseHue(name) { // FNV-1a → hue, so the same course always gets the same color
+  let h = 2166136261;
+  const s = String(name).toLowerCase();
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) % 360;
+}
+function courseAccent(name) { return 'hsl(' + courseHue(name) + ',60%,64%)'; }
+function courseAccentDim(name) { return 'hsla(' + courseHue(name) + ',60%,64%,0.14)'; }
+function courseMonogram(name) {
+  const w = String(name).trim().split(/\s+/).filter(x => /[a-z0-9]/i.test(x));
+  return ((w[0] ? w[0][0] : '?') + (w[1] ? w[1][0] : '')).toUpperCase();
+}
+function courseBadgeHtml(name, extra) {
+  return '<span class="cbadge" style="color:' + courseAccent(name) + ';background:' + courseAccentDim(name) +
+    (extra ? ';' + extra : '') + '">' + esc(courseMonogram(name)) + '</span>';
+}
+
+/* Tiny par-shape pictogram (inline SVG, no external assets): tee → green path. */
+function parGlyph(par, color) {
+  const paths = { 3: 'M5 16 L13 7', 4: 'M5 16 L7 10 L13 7', 5: 'M5 17 L5.5 11 L11 10 L13 5.5' };
+  const d = paths[par] || paths[4];
+  return '<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">' +
+    '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>' +
+    '<circle cx="15" cy="5" r="2.6" fill="' + color + '"/></svg>';
+}
+
 let confirmResolve = null;
 function confirmDlg(title, msg, yesLabel = 'OK') {
   document.getElementById('confirmTitle').textContent = title;
@@ -1144,6 +1198,7 @@ function renderAll() { renderTab(currentTab); }
    ============================================================ */
 function renderRounds() {
   const r = calc();
+  renderSeedBanner();
   // hero
   const hero = document.getElementById('heroIndex');
   const sub = document.getElementById('heroSub');
@@ -1196,7 +1251,8 @@ function renderRounds() {
     }
     if (res.counting) chips.push('<span class="chip green">★ counts</span>');
     if (res.flags && res.flags.some(f => f.startsWith('approx'))) chips.push('<span class="chip" title="Approximate hole data">≈</span>');
-    return '<div class="round-card' + (res.counting ? ' counting' : '') + '" onclick="openRoundEditor(\'' + rd.id + '\')">' +
+    return '<div class="round-card' + (res.counting ? ' counting' : '') + '" style="border-left:4px solid ' +
+      courseAccent(cname) + '" onclick="openRoundEditor(\'' + rd.id + '\')">' +
       grossHtml +
       '<div class="rc-main"><div class="rc-course">' + esc(cname) + ' · ' + esc(tname) + '</div>' +
       '<div class="rc-sub">' + fmtDate(rd.date) + ' · ' + rd.holesPlayed + ' holes ' + chips.join(' ') + '</div></div>' +
@@ -1236,8 +1292,10 @@ function renderCHSelects() {
 function renderCHCalc(retried) {
   const r = calc();
   const out = document.getElementById('chResult'), det = document.getElementById('chDetail');
+  const card = document.getElementById('chCalcCard');
   const course = courseById(document.getElementById('chCourse').value);
   const tee = teeById(course, document.getElementById('chTee').value);
+  card.style.borderLeft = course ? '4px solid ' + courseAccent(course.name) : '';
   if (!course || !tee) {
     // course changed → repopulate tees once, then give up (course may have no tees)
     if (course && !tee && !retried) { renderCHSelects(); return renderCHCalc(true); }
@@ -1357,6 +1415,11 @@ function enterPlay(holeIdx) {
   document.getElementById('btnReview').style.display = '';
   document.getElementById('reSubtitle').textContent =
     RE.course.name + ' · ' + RE.tee.name + ' · ' + fmtDate(RE.round.date);
+  const badge = document.getElementById('reBadge');
+  badge.style.display = '';
+  badge.style.color = courseAccent(RE.course.name);
+  badge.style.background = courseAccentDim(RE.course.name);
+  badge.textContent = courseMonogram(RE.course.name);
   RE.cur = holeIdx;
   renderPlay();
 }
@@ -1371,9 +1434,13 @@ const REL_NAMES = { '-3': 'Albatross', '-2': 'Eagle', '-1': 'Birdie', 0: 'Par', 
 function renderPlay() {
   const i = RE.cur, n = RE.round.holesPlayed;
   const par = RE.rh.pars[i], si = RE.rh.sis[i];
+  const yds = RE.rh.yards ? RE.rh.yards[i] : null;
   const approx = RE.rh.flags.includes('approx-pars') || RE.rh.flags.includes('approx-si');
-  document.getElementById('reHoleNum').textContent = 'Hole ' + holeLabel(i);
-  document.getElementById('reHoleMeta').textContent = 'Par ' + par + ' · SI ' + si + (approx ? ' ≈' : '');
+  document.getElementById('reHoleNum').innerHTML =
+    parGlyph(par, courseAccent(RE.course.name)) + 'Hole ' + holeLabel(i);
+  document.getElementById('reHoleMeta').innerHTML = 'Par ' + par +
+    (yds ? ' · <span class="hyds">' + yds + ' yds</span>' : '') +
+    ' · SI ' + si + (approx ? ' ≈' : '');
   const committed = RE.round.scores[i] >= 1;
   const s = shownScore();
   const scoreEl = document.getElementById('reScore');
@@ -1424,6 +1491,30 @@ function bumpScore(d) {
   persist();
   renderPlay();
   armAutoAdvance();
+}
+
+// Tap the big number to type the score instead of stepping (+/− stay available).
+function editScoreTyped() {
+  cancelAutoAdvance();
+  const el = document.getElementById('reScore');
+  if (el.querySelector('input')) return;
+  const i = RE.cur;
+  el.innerHTML = '<input type="number" inputmode="numeric" min="1" max="30" enterkeyhint="done" placeholder="' + shownScore() + '">';
+  const inp = el.querySelector('input');
+  inp.focus();
+  let done = false;
+  const commit = () => {
+    if (done) return; done = true;
+    const v = Math.round(Number(inp.value));
+    if (RE && RE.cur === i && v >= 1 && v <= 30) {
+      RE.round.scores[i] = v;
+      persist();
+      renderPlay();
+      armAutoAdvance();
+    } else if (RE) renderPlay();
+  };
+  inp.onblur = commit;
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); else if (e.key === 'Escape') { inp.value = ''; inp.blur(); } };
 }
 function ensureArr(field, fill = null) {
   if (!RE.round[field]) RE.round[field] = new Array(RE.round.holesPlayed).fill(fill);
@@ -1566,7 +1657,7 @@ function openCourseEditor(courseId) {
     id: src ? src.id : null,
     working: src ? JSON.parse(JSON.stringify({ name: src.name, tees: src.tees })) : { name: '', tees: [] }
   };
-  CE.working.tees.forEach(t => { t._detail = !!(t.holePars && t.holePars.length); });
+  CE.working.tees.forEach(t => { t._detail = !!((t.holePars && t.holePars.length) || (t.holeYards && t.holeYards.length)); });
   if (!CE.working.tees.length) addTeeState();
   document.getElementById('ceTitle').textContent = src ? 'Edit course' : 'New course';
   document.getElementById('ceName').value = CE.working.name;
@@ -1576,7 +1667,7 @@ function openCourseEditor(courseId) {
 }
 function addTeeState() {
   CE.working.tees.push({ id: uuid(), name: '', holes: 18, par: 72, courseRating: null, slopeRating: null,
-    holePars: null, holeHandicaps: null, _detail: false });
+    holePars: null, holeHandicaps: null, holeYards: null, _detail: false });
 }
 function addTee() { addTeeState(); ceRenderTees(); }
 function removeTee(ti) { CE.working.tees.splice(ti, 1); ceRenderTees(); }
@@ -1591,6 +1682,7 @@ function ceSetHoles(ti, n) {
   t.holes = n;
   t.holePars = t.holePars ? resize(t.holePars, n) : null;
   t.holeHandicaps = t.holeHandicaps ? resize(t.holeHandicaps, n) : null;
+  t.holeYards = t.holeYards ? resize(t.holeYards, n) : null;
   if (n === 9 && t.par === 72) t.par = 36;
   if (n === 18 && t.par === 36) t.par = 72;
   ceRenderTees();
@@ -1602,12 +1694,14 @@ function ceToggleDetail(ti) {
   if (t._detail) {
     if (!t.holePars) t.holePars = new Array(t.holes).fill(null);
     if (!t.holeHandicaps) t.holeHandicaps = new Array(t.holes).fill(null);
+    if (!t.holeYards) t.holeYards = new Array(t.holes).fill(null);
   }
   ceRenderTees();
 }
 function ceSetHole(ti, kind, hi, value) {
   const t = CE.working.tees[ti];
-  const arr = kind === 'par' ? t.holePars : t.holeHandicaps;
+  if (kind === 'yds' && !t.holeYards) t.holeYards = new Array(t.holes).fill(null);
+  const arr = kind === 'par' ? t.holePars : kind === 'yds' ? t.holeYards : t.holeHandicaps;
   arr[hi] = value === '' ? null : Number(value);
   if (kind === 'par') ceUpdateParSum(ti);
 }
@@ -1634,15 +1728,17 @@ function ceRenderTees() {
     if (t._detail) {
       const rows = [];
       for (let half = 0; half < t.holes / 9; half++) {
-        const cells = [[], [], []];
+        const cells = [[], [], [], []];
         for (let h = half * 9; h < half * 9 + 9; h++) {
           cells[0].push('<div class="hg-num">' + (h + 1) + '</div>');
           cells[1].push('<input type="number" inputmode="numeric" min="3" max="6" value="' + (t.holePars[h] ?? '') + '" oninput="ceSetHole(' + ti + ',\'par\',' + h + ',this.value)">');
           cells[2].push('<input type="number" inputmode="numeric" min="1" max="' + t.holes + '" value="' + (t.holeHandicaps[h] ?? '') + '" oninput="ceSetHole(' + ti + ',\'si\',' + h + ',this.value)">');
+          cells[3].push('<input type="number" inputmode="numeric" min="30" max="700" value="' + ((t.holeYards && t.holeYards[h]) ?? '') + '" oninput="ceSetHole(' + ti + ',\'yds\',' + h + ',this.value)">');
         }
         rows.push('<div class="holegrid"><div class="hg-lbl">HOLE</div>' + cells[0].join('') +
           '<div class="hg-lbl">PAR</div>' + cells[1].join('') +
-          '<div class="hg-lbl">SI</div>' + cells[2].join('') + '</div>');
+          '<div class="hg-lbl">SI</div>' + cells[2].join('') +
+          '<div class="hg-lbl">YDS</div>' + cells[3].join('') + '</div>');
       }
       detail = rows.join('') +
         '<div class="row spread" style="margin-top:8px"><span class="small dim" id="parsum_' + ti + '"></span>' +
@@ -1677,7 +1773,7 @@ async function saveCourse() {
     if (!(t.courseRating >= 40 && t.courseRating <= 90)) return msgDlg('Check rating', 'Course rating for ' + label + ' must be set (e.g. 71.8).');
     if (!(t.slopeRating >= 55 && t.slopeRating <= 155)) return msgDlg('Check slope', 'Slope for ' + label + ' must be 55–155.');
     const out = { id: t.id, name: t.name.trim(), holes: t.holes, par: t.par,
-      courseRating: t.courseRating, slopeRating: t.slopeRating, holePars: null, holeHandicaps: null };
+      courseRating: t.courseRating, slopeRating: t.slopeRating, holePars: null, holeHandicaps: null, holeYards: null };
     if (t._detail) {
       const pars = t.holePars || [], sis = t.holeHandicaps || [];
       const parsFilled = pars.filter(p => p >= 3 && p <= 6).length;
@@ -1694,6 +1790,9 @@ async function saveCourse() {
       } else if (sis.some(s => s !== null && s !== undefined)) {
         if (!(await confirmDlg('Stroke index invalid', label + ': stroke indexes must use each of 1–' + t.holes + ' exactly once. Save without them?', 'Save without'))) return;
       }
+      // yardages are display-only: keep them when every hole is filled, otherwise drop
+      const yds = t.holeYards || [];
+      if (yds.filter(y => y >= 30 && y <= 800).length === t.holes) out.holeYards = yds.slice();
     }
     clean.push(out);
   }
@@ -1719,6 +1818,129 @@ function closeCourseEditor() {
   CE = null;
   document.getElementById('courseEditor').classList.remove('open');
   renderAll();
+}
+
+/* ============================================================
+   SEED COURSES — Tri-Cities, WA area (researched + validated June 2026).
+   Additive only: ids are fixed UUIDs so every device that accepts the
+   pack gets identical course/tee ids (sync-friendly). Tees without
+   verified hole detail are quick-add (holePars/holeHandicaps null) and
+   the app flags them ≈ as usual. Yardages are display-only.
+   ============================================================ */
+const SEED_COURSES = [
+{"id":"6ba7bfad-ba69-555a-9dee-305bbd813951","name":"Canyon Lakes Golf Course","seeded":true,"city":"Kennewick, WA","website":"https://www.canyonlakesgolfcourse.com","access":"public","dataSource":"Official scorecard (canyonlakesgolfcourse.com), June 2026","tees":[
+  {"id":"a006156b-57ab-5728-8184-e368eb1700e4","name":"Black","holes":18,"par":72,"courseRating":74.2,"slopeRating":132,"holePars":[4,4,5,3,4,4,3,4,5,4,4,3,5,4,5,4,3,4],"holeHandicaps":[9,15,1,13,3,11,17,5,7,12,16,18,6,8,4,2,14,10],"holeYards":[378,324,615,219,423,374,200,420,527,438,364,181,520,405,559,441,198,440]},
+  {"id":"3db70536-06bb-5921-bd29-0e86b470313e","name":"Blue","holes":18,"par":72,"courseRating":72.5,"slopeRating":130,"holePars":[4,4,5,3,4,4,3,4,5,4,4,3,5,4,5,4,3,4],"holeHandicaps":[9,15,1,13,3,11,17,5,7,12,16,18,6,8,4,2,14,10],"holeYards":[368,320,566,198,403,374,179,388,522,406,354,158,500,382,520,424,188,380]},
+  {"id":"97eec793-3969-56b4-bad6-808baedda759","name":"White","holes":18,"par":72,"courseRating":70.3,"slopeRating":127,"holePars":[4,4,5,3,4,4,3,4,5,4,4,3,5,4,5,4,3,4],"holeHandicaps":[9,15,1,13,3,11,17,5,7,12,16,18,6,8,4,2,14,10],"holeYards":[350,307,545,159,379,349,150,353,500,387,329,145,484,371,486,397,150,370]},
+  {"id":"def61923-3395-5e06-88a1-a3672476503f","name":"Gold","holes":18,"par":72,"courseRating":68.2,"slopeRating":122,"holePars":[4,4,5,3,4,4,3,4,5,4,4,3,5,4,5,4,3,4],"holeHandicaps":[9,15,1,13,3,11,17,5,7,12,16,18,6,8,4,2,14,10],"holeYards":[318,282,520,145,362,320,130,334,458,355,276,108,452,348,473,375,138,350]},
+  {"id":"27629286-98b9-5ead-bf79-8c68efad62f3","name":"Red/Gold Combo","holes":18,"par":72,"courseRating":67.0,"slopeRating":118,"holePars":[4,4,5,3,4,4,3,4,5,4,4,3,5,4,5,4,3,4],"holeHandicaps":[9,15,1,13,3,11,17,5,7,12,16,18,6,8,4,2,14,10],"holeYards":[298,277,516,125,349,315,129,329,448,338,248,100,438,338,458,358,133,336]},
+  {"id":"c5abb4b4-9c01-544a-b7fe-c82f87ed4e1f","name":"Red","holes":18,"par":72,"courseRating":65.1,"slopeRating":113,"holePars":[4,4,5,3,4,4,3,4,5,4,4,3,5,4,5,4,3,4],"holeHandicaps":[9,15,1,13,3,11,17,5,7,12,16,18,6,8,4,2,14,10],"holeYards":[298,277,413,125,281,315,129,262,448,338,248,100,375,266,458,281,133,336]},
+  {"id":"1a74ee05-fbd1-55e3-9d7b-a007629c5a91","name":"Green","holes":18,"par":72,"courseRating":62.8,"slopeRating":104,"holePars":[4,4,5,3,4,4,3,4,5,4,4,3,5,4,5,4,3,4],"holeHandicaps":[9,15,1,13,3,11,17,5,7,12,16,18,6,8,4,2,14,10],"holeYards":[230,211,408,120,275,249,124,257,322,272,243,95,370,261,331,232,128,257]},
+  {"id":"b2e97525-9e52-5e28-82d9-38318987ad23","name":"Red (W)","holes":18,"par":72,"courseRating":69.8,"slopeRating":125,"holePars":null,"holeHandicaps":null,"holeYards":null},
+  {"id":"b8ab84ac-06e9-57e9-99dc-1d6c0970d5c3","name":"Green (W)","holes":18,"par":72,"courseRating":66.0,"slopeRating":116,"holePars":null,"holeHandicaps":null,"holeYards":null}]},
+{"id":"5ac4ac38-285b-5f12-b63e-f7b884a74d63","name":"Columbia Point Golf Course","seeded":true,"city":"Richland, WA","website":"https://www.playcolumbiapoint.com","access":"public","dataSource":"Official scorecard PDF (July 2024 revision), June 2026","tees":[
+  {"id":"f80dfc4a-3e5f-52db-aad7-8b9fd50cf3a3","name":"Black","holes":18,"par":72,"courseRating":71.6,"slopeRating":131,"holePars":[4,4,4,3,5,5,4,3,5,4,4,3,5,4,3,4,3,5],"holeHandicaps":[15,17,7,13,5,11,3,9,1,2,6,10,14,18,4,8,16,12],"holeYards":[345,312,373,141,591,496,410,241,594,402,400,183,518,282,206,388,146,489]},
+  {"id":"de50c2cc-977c-5b41-b953-54aabf5d490d","name":"Black/Blue","holes":18,"par":72,"courseRating":70.2,"slopeRating":128,"holePars":[4,4,4,3,5,5,4,3,5,4,4,3,5,4,3,4,3,5],"holeHandicaps":[15,17,7,13,5,11,3,9,1,2,6,10,14,18,4,8,16,12],"holeYards":null},
+  {"id":"0b2fe178-0fe1-5e68-804e-42ab3bfa52fe","name":"Blue","holes":18,"par":72,"courseRating":69.0,"slopeRating":126,"holePars":[4,4,4,3,5,5,4,3,5,4,4,3,5,4,3,4,3,5],"holeHandicaps":[15,17,7,13,5,11,3,9,1,2,6,10,14,18,4,8,16,12],"holeYards":[308,289,343,130,548,483,372,204,538,366,350,158,478,265,177,355,129,472]},
+  {"id":"4359bf8b-aa85-5246-a185-0f8e97713c43","name":"Blue/White","holes":18,"par":72,"courseRating":67.7,"slopeRating":120,"holePars":[4,4,4,3,5,5,4,3,5,4,4,3,5,4,3,4,3,5],"holeHandicaps":[15,17,7,13,5,11,3,9,1,2,6,10,14,18,4,8,16,12],"holeYards":null},
+  {"id":"e755dbba-8108-5f38-9f01-06f976e6f438","name":"White","holes":18,"par":72,"courseRating":66.6,"slopeRating":114,"holePars":[4,4,4,3,5,5,4,3,5,4,4,3,5,4,3,4,3,5],"holeHandicaps":[15,17,7,13,5,11,3,9,1,2,6,10,14,18,4,8,16,12],"holeYards":[257,274,330,113,536,474,326,159,491,344,314,136,429,213,125,313,115,429]},
+  {"id":"56690cf5-c06e-5fc5-ba73-6b3052722a6a","name":"Red","holes":18,"par":72,"courseRating":64.0,"slopeRating":109,"holePars":[4,4,4,3,5,5,4,3,5,4,4,3,5,4,3,4,3,5],"holeHandicaps":[15,17,7,13,5,11,3,9,1,2,6,10,14,18,4,8,16,12],"holeYards":[223,225,285,113,498,417,299,127,435,291,265,116,387,181,125,285,99,379]},
+  {"id":"23af8285-6a76-5d74-a01a-71257285cd32","name":"White (W)","holes":18,"par":72,"courseRating":71.3,"slopeRating":122,"holePars":null,"holeHandicaps":null,"holeYards":null},
+  {"id":"bf6027d7-fb14-56c8-b866-82f57e0f564c","name":"Red (W)","holes":18,"par":72,"courseRating":67.5,"slopeRating":114,"holePars":null,"holeHandicaps":null,"holeYards":null}]},
+{"id":"e8ec4293-4a19-5bf8-99f4-daadeea10004","name":"Horn Rapids Golf Course","seeded":true,"city":"Richland, WA","website":"https://hornrapidsgolfcourse.com","access":"public","dataSource":"Official scorecard (hornrapidsgolfcourse.com), June 2026","tees":[
+  {"id":"3e26ab2e-3348-563b-a2b0-9bae65cb88ec","name":"Black","holes":18,"par":72,"courseRating":74.2,"slopeRating":137,"holePars":[4,4,5,4,5,3,4,3,4,4,4,5,3,4,4,4,3,5],"holeHandicaps":[15,1,9,3,13,11,5,17,7,6,18,2,10,8,12,4,16,14],"holeYards":[321,453,547,421,512,227,429,221,390,380,372,579,200,414,392,432,203,497]},
+  {"id":"b4f62dd5-048c-522c-a1c4-c7b7f527584a","name":"Blue","holes":18,"par":72,"courseRating":72.4,"slopeRating":136,"holePars":[4,4,5,4,5,3,4,3,4,4,4,5,3,4,4,4,3,5],"holeHandicaps":[15,1,9,3,13,11,5,17,7,6,18,2,10,8,12,4,16,14],"holeYards":[319,429,537,391,512,196,429,193,364,363,372,579,172,379,382,419,176,497]},
+  {"id":"1a07635b-7bdc-5b5e-9e4d-1aa36e0c7135","name":"White","holes":18,"par":72,"courseRating":71.0,"slopeRating":133,"holePars":[4,4,5,4,5,3,4,3,4,4,4,5,3,4,4,4,3,5],"holeHandicaps":[15,1,9,3,13,11,5,17,7,6,18,2,10,8,12,4,16,14],"holeYards":[293,411,496,380,481,177,407,170,333,347,337,551,156,371,341,390,158,468]},
+  {"id":"6dc405c2-a90d-57ce-acfb-79e07f372b67","name":"Gold","holes":18,"par":72,"courseRating":68.3,"slopeRating":129,"holePars":[4,4,5,4,5,3,4,3,4,4,4,5,3,4,4,4,3,5],"holeHandicaps":[15,1,9,3,13,11,5,17,7,6,18,2,10,8,12,4,16,14],"holeYards":[278,345,471,357,456,150,383,158,290,310,321,524,136,301,327,377,149,450]},
+  {"id":"1129690d-9fd7-5d84-8f53-fe801cc0bcb0","name":"Red","holes":18,"par":72,"courseRating":64.9,"slopeRating":113,"holePars":[4,4,5,4,5,3,4,3,4,4,4,5,3,4,4,4,3,5],"holeHandicaps":[15,1,9,3,13,11,5,17,7,6,18,2,10,8,12,4,16,14],"holeYards":[260,339,427,315,411,136,316,122,256,267,265,485,122,275,271,298,102,401]},
+  {"id":"0a87000a-d23a-5dab-8140-3799dcc6a0ef","name":"Aqua (W)","holes":18,"par":72,"courseRating":65.6,"slopeRating":107,"holePars":[4,4,5,4,5,3,4,3,4,4,4,5,3,4,4,4,3,5],"holeHandicaps":[11,5,9,7,3,15,13,17,1,6,8,2,16,14,10,12,18,4],"holeYards":[204,260,338,233,411,65,316,122,180,226,265,402,122,275,195,298,102,353]},
+  {"id":"13aab680-a7d9-5460-96bb-adee7ba70607","name":"Gold (W)","holes":18,"par":72,"courseRating":73.3,"slopeRating":134,"holePars":null,"holeHandicaps":null,"holeYards":null},
+  {"id":"2367bca4-1adf-5e71-b7d2-ff1cf0663019","name":"Red (W)","holes":18,"par":72,"courseRating":69.0,"slopeRating":123,"holePars":null,"holeHandicaps":null,"holeYards":null}]},
+{"id":"fca4fe88-c463-5caa-ba08-60fc5e967995","name":"Zintel Creek Golf Club","seeded":true,"city":"Kennewick, WA","website":"https://www.zintelcreekgolfclub.com","access":"public","dataSource":"Official scorecard 07/2025 (zintelcreekgolfclub.com), June 2026","tees":[
+  {"id":"64e1f1af-a2a4-53b4-9dc8-416c092fa28a","name":"Cannon","holes":18,"par":66,"courseRating":64.4,"slopeRating":119,"holePars":[4,3,3,4,4,3,5,3,4,3,4,4,3,3,3,4,4,5],"holeHandicaps":[9,11,3,13,7,17,5,15,1,8,2,4,14,16,10,12,6,18],"holeYards":[310,160,225,320,310,170,505,145,385,155,395,345,160,165,165,260,315,455]},
+  {"id":"0a0b8fa7-03d3-5d50-8821-db29bbb14d20","name":"Zintel","holes":18,"par":66,"courseRating":63.5,"slopeRating":115,"holePars":[4,3,3,4,4,3,5,3,4,3,4,4,3,3,3,4,4,5],"holeHandicaps":[9,11,3,13,7,17,5,15,1,8,2,4,14,16,10,12,6,18],"holeYards":[310,140,195,300,290,140,475,145,385,155,380,345,140,130,155,260,285,420]},
+  {"id":"408b3371-2395-505d-b926-d3e353e7a66e","name":"Legends","holes":18,"par":66,"courseRating":62.1,"slopeRating":110,"holePars":[4,3,3,4,4,3,5,3,4,3,4,4,3,3,3,4,4,5],"holeHandicaps":[9,11,3,13,7,17,5,15,1,8,2,4,14,16,10,12,6,18],"holeYards":[300,125,175,290,265,120,465,125,365,140,370,330,125,110,145,230,265,375]},
+  {"id":"27d353c5-d47d-5c12-964b-352f4ea4048b","name":"Cannon (W)","holes":18,"par":66,"courseRating":69.0,"slopeRating":123,"holePars":null,"holeHandicaps":null,"holeYards":null},
+  {"id":"a82777e6-8a3a-50a1-bf10-61ee519cd9f6","name":"Zintel (W)","holes":18,"par":66,"courseRating":67.6,"slopeRating":121,"holePars":null,"holeHandicaps":null,"holeYards":null},
+  {"id":"2dcaefb5-fca2-5808-9886-eaca47943869","name":"Legends (W)","holes":18,"par":66,"courseRating":65.3,"slopeRating":117,"holePars":null,"holeHandicaps":null,"holeYards":null}]},
+{"id":"179da22c-afa9-53a5-8077-92ff555e5bb3","name":"West Richland Golf Course","seeded":true,"city":"West Richland, WA","website":"http://westrichlandgolf.com","access":"public","dataSource":"GolfLink + GolfPass (matching), June 2026","tees":[
+  {"id":"5afc5328-0471-5e0b-ae2a-08139f5558b6","name":"Blue","holes":18,"par":70,"courseRating":68.6,"slopeRating":121,"holePars":[4,5,3,4,3,4,5,3,4,4,3,3,4,3,5,5,4,4],"holeHandicaps":null,"holeYards":[366,540,187,323,160,436,464,157,402,287,182,176,345,197,536,483,379,367]},
+  {"id":"efec91cd-3d08-5944-a9f4-4799743f497f","name":"White","holes":18,"par":70,"courseRating":66.7,"slopeRating":115,"holePars":[4,5,3,4,3,4,5,3,4,4,3,3,4,3,5,5,4,4],"holeHandicaps":null,"holeYards":[337,499,175,310,147,382,443,143,384,258,134,158,327,173,513,457,361,350]},
+  {"id":"99d01f7c-57fd-535a-9813-da461b354904","name":"Gold","holes":18,"par":70,"courseRating":64.7,"slopeRating":109,"holePars":null,"holeHandicaps":null,"holeYards":null},
+  {"id":"ece71ee2-fc17-56a9-901a-1e25ba7ce8dd","name":"Gold (W)","holes":18,"par":71,"courseRating":69.3,"slopeRating":117,"holePars":null,"holeHandicaps":null,"holeYards":null},
+  {"id":"a47c745f-683f-5837-a432-5d0b6617a910","name":"Red (W)","holes":18,"par":71,"courseRating":67.7,"slopeRating":114,"holePars":null,"holeHandicaps":null,"holeYards":null}]},
+{"id":"190f9de3-99a2-5315-ae76-c263cf83e925","name":"Sun Willows Golf Course","seeded":true,"city":"Pasco, WA","website":"https://www.playsunwillows.com","access":"public","dataSource":"Official scorecard (pars/SI/yards) + GolfLink/GolfPass ratings, June 2026","tees":[
+  {"id":"51eb75e7-4c5e-5839-b86d-62dbf7c1a26d","name":"Blue","holes":18,"par":72,"courseRating":72.0,"slopeRating":117,"holePars":[4,3,4,4,4,5,3,5,4,4,5,4,3,4,5,3,4,4],"holeHandicaps":[9,17,7,15,13,5,3,11,1,4,10,14,18,2,8,12,6,16],"holeYards":[411,155,370,373,394,580,224,503,424,410,540,362,168,419,512,202,417,355]},
+  {"id":"dd7505a0-36ea-5c58-ab19-26ec603d2892","name":"White","holes":18,"par":72,"courseRating":70.1,"slopeRating":113,"holePars":[4,3,4,4,4,5,3,5,4,4,5,4,3,4,5,3,4,4],"holeHandicaps":[9,17,7,15,13,5,3,11,1,4,10,14,18,2,8,12,6,16],"holeYards":[392,131,359,321,383,510,199,483,409,389,490,326,138,401,492,171,395,338]},
+  {"id":"ee425087-979c-51fa-9818-eb76ec30be75","name":"Yellow","holes":18,"par":72,"courseRating":66.9,"slopeRating":107,"holePars":[4,3,4,4,4,5,3,5,4,4,5,4,3,4,5,3,4,4],"holeHandicaps":[9,17,7,15,13,5,3,11,1,4,10,14,18,2,8,12,6,16],"holeYards":[372,122,346,280,367,442,178,421,360,342,461,301,126,351,447,151,340,296]}]},
+{"id":"696db176-68c9-57c8-8861-2719e4938e28","name":"Big River Golf Course","seeded":true,"city":"Umatilla, OR","website":"https://bigrivergolfcourse.org","access":"public","dataSource":"Official scorecard PDF (bigrivergolfcourse.org), June 2026","tees":[
+  {"id":"847b0928-8411-50fa-8a52-2f639dffa6f0","name":"Black","holes":18,"par":70,"courseRating":69.3,"slopeRating":114,"holePars":[3,3,3,5,5,4,4,4,3,5,3,4,3,4,5,4,4,4],"holeHandicaps":[6,14,16,4,2,18,8,10,12,5,17,13,3,15,1,11,9,7],"holeYards":[170,185,145,535,500,310,380,345,165,525,200,425,225,315,520,420,420,335]},
+  {"id":"92fe14d7-3459-5be7-b1b1-70bb2f91fc41","name":"Blue","holes":18,"par":70,"courseRating":67.4,"slopeRating":112,"holePars":[3,3,3,5,5,4,4,4,3,5,3,4,3,4,5,4,4,4],"holeHandicaps":[6,14,16,4,2,18,8,10,12,5,17,13,3,15,1,11,9,7],"holeYards":[155,165,145,510,460,295,355,330,165,505,180,375,195,305,505,388,390,320]},
+  {"id":"584fb818-806a-59a1-9aeb-952b2ec36cae","name":"White","holes":18,"par":70,"courseRating":64.5,"slopeRating":102,"holePars":[3,3,3,5,5,4,4,4,3,5,3,4,3,4,5,4,4,4],"holeHandicaps":[6,14,16,4,2,18,8,10,12,5,17,13,3,15,1,11,9,7],"holeYards":[135,150,115,470,410,265,295,275,150,475,145,325,148,290,465,330,325,305]},
+  {"id":"5e7facb9-a6d9-5f80-a570-dfc1d340ad4f","name":"Blue (W)","holes":18,"par":70,"courseRating":73.2,"slopeRating":121,"holePars":null,"holeHandicaps":null,"holeYards":null},
+  {"id":"6614ffe7-9270-5877-a371-bfe98b4e50b6","name":"White (W)","holes":18,"par":70,"courseRating":69.5,"slopeRating":111,"holePars":null,"holeHandicaps":null,"holeYards":null}]}
+];
+
+function normCourseName(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/\b(golf|course|club|cc|gc|links|the)\b/g, '').replace(/\s+/g, ' ').trim();
+}
+function seedMatchesCourse(seed, course) {
+  const a = normCourseName(seed.name), b = normCourseName(course.name);
+  if (!a || !b) return false;
+  return a === b || a.startsWith(b) || b.startsWith(a);
+}
+function missingSeedCourses() {
+  return SEED_COURSES.filter(sc => !DATA.courses.some(c => seedMatchesCourse(sc, c)));
+}
+
+function renderSeedBanner() {
+  const el = document.getElementById('seedBanner');
+  const missing = missingSeedCourses();
+  const show = missing.length > 0 && !DATA.settings.seedDeclined;
+  el.style.display = show ? '' : 'none';
+  if (show) document.getElementById('seedBannerMsg').textContent =
+    'Add ' + missing.length + ' Tri-Cities area course' + (missing.length > 1 ? 's' : '') +
+    ' (rating, slope, pars, yardages) so you can post rounds anywhere in town?';
+}
+function declineSeedCourses() {
+  DATA.settings.seedDeclined = true;
+  persist();
+  renderAll();
+}
+function acceptSeedCourses() {
+  let added = 0, enriched = 0;
+  for (const sc of SEED_COURSES) {
+    const existing = DATA.courses.find(c => seedMatchesCourse(sc, c));
+    if (!existing) {
+      DATA.courses.push(JSON.parse(JSON.stringify(sc)));
+      added++;
+      continue;
+    }
+    // Course already exists (e.g. hand-entered Canyon Lakes): never overwrite or
+    // duplicate it — only fill in fields the user doesn't have yet.
+    if (!existing.city && sc.city) { existing.city = sc.city; enriched++; }
+    if (!existing.website && sc.website) existing.website = sc.website;
+    for (const st of sc.tees) {
+      const et = existing.tees.find(t => t.name.trim().toLowerCase() === st.name.trim().toLowerCase());
+      if (!et) continue; // don't add tees to a user-managed course uninvited
+      const sameArr = (x, y) => Array.isArray(x) && Array.isArray(y) && x.length === y.length && x.every((v, k) => v === y[k]);
+      // yardages: copy only when the tee demonstrably matches (par + rating/slope agree,
+      // and hole pars/SI agree wherever both sides have them)
+      const ratingsMatch = et.par === st.par && et.courseRating === st.courseRating && et.slopeRating === st.slopeRating;
+      const parsCompatible = !et.holePars || !st.holePars || sameArr(et.holePars, st.holePars);
+      const siCompatible = !et.holeHandicaps || !st.holeHandicaps || sameArr(et.holeHandicaps, st.holeHandicaps);
+      if (ratingsMatch && parsCompatible && siCompatible) {
+        if (!et.holePars && st.holePars) { et.holePars = st.holePars.slice(); enriched++; }
+        if (!et.holeHandicaps && st.holeHandicaps) { et.holeHandicaps = st.holeHandicaps.slice(); enriched++; }
+        if (!et.holeYards && st.holeYards) { et.holeYards = st.holeYards.slice(); enriched++; }
+      }
+    }
+  }
+  persist();
+  renderAll();
+  if (added || enriched) msgDlg('Courses added', added + ' course' + (added === 1 ? '' : 's') + ' added' +
+    (enriched ? ', ' + enriched + ' detail' + (enriched === 1 ? '' : 's') + ' merged into existing courses' : '') + '.');
 }
 
 /* ============================================================
@@ -1935,10 +2157,11 @@ function renderStats() {
   // course history
   const courseIds = [...new Set(rated.map(x => x.rd.courseId))].filter(id => courseById(id));
   if (courseIds.length) {
-    const sel = courseIds.map(id => '<option value="' + id + '"' + (id === statsCourseSel ? ' selected' : '') + '>' + esc(courseById(id).name) + '</option>').join('');
-    html += '<div class="card"><div class="card-title">Course history</div>' +
+    const selId = courseIds.includes(statsCourseSel) ? statsCourseSel : courseIds[0];
+    const sel = courseIds.map(id => '<option value="' + id + '"' + (id === selId ? ' selected' : '') + '>' + esc(courseById(id).name) + '</option>').join('');
+    html += '<div class="card" style="border-left:4px solid ' + courseAccent(courseById(selId).name) + '"><div class="card-title">Course history</div>' +
       '<select onchange="statsCourseSel=this.value;renderStats()" style="margin-bottom:10px">' + sel + '</select>' +
-      courseHistory(courseIds.includes(statsCourseSel) ? statsCourseSel : courseIds[0], rated) + '</div>';
+      courseHistory(selId, rated) + '</div>';
   }
 
   body.innerHTML = html;
@@ -2012,11 +2235,14 @@ function histogram(diffs) {
 function renderSettings() {
   const list = document.getElementById('courseList');
   list.innerHTML = DATA.courses.length ? DATA.courses.map(c =>
-    '<div class="course-item"><div class="grow"><b>' + esc(c.name) + '</b>' +
+    '<div class="course-item">' + courseBadgeHtml(c.name) + '<div class="grow"><b>' + esc(c.name) + '</b>' +
+    (c.city ? ' <span class="small dim">' + esc(c.city) + '</span>' : '') +
     '<div class="small dim">' + c.tees.map(t => esc(t.name) + ' ' + t.courseRating.toFixed(1) + '/' + t.slopeRating +
       ((t.holePars && t.holeHandicaps) ? '' : ' ≈')).join(' · ') + '</div></div>' +
     '<button class="btn btn-sm" onclick="openCourseEditor(\'' + c.id + '\')">Edit</button></div>'
   ).join('') : '<div class="empty">No courses yet — add your home course.</div>';
+  const seedRow = document.getElementById('seedSettingsRow');
+  if (seedRow) seedRow.style.display = (typeof missingSeedCourses === 'function' && missingSeedCourses().length) ? '' : 'none';
 
   const sel = document.getElementById('defaultCourseSel');
   sel.innerHTML = '<option value="">None</option>' + DATA.courses.map(c =>

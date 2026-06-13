@@ -343,6 +343,36 @@ test('back 9 on an 18-hole tee uses back-nine pars and half rating', function ()
   eq(r.perRound.N.diff, 0.4, 'diff');          // back nine mirrors the front in PARS
 });
 
+console.log('resolveHoles — optional per-hole yardages (display only)');
+var YDS = [385, 510, 165, 401, 377, 528, 150, 412, 390, 366, 540, 172, 398, 405, 515, 145, 388, 379];
+test('yards passed through on a full 18 when the tee has them', function () {
+  var d = mkData();
+  d.courses[0].tees[0].holeYards = YDS;
+  var rh = Engine.resolveHoles(d.courses[0].tees[0], { holesPlayed: 18 });
+  eq(rh.yards, YDS);
+});
+test('yards is null when the tee has none (and diff is unaffected)', function () {
+  var d = mkData();
+  var rh = Engine.resolveHoles(d.courses[0].tees[0], { holesPlayed: 18 });
+  eq(rh.yards, null);
+  d.rounds.push(mkRound('A', '2026-01-05', fill(18, 5)));
+  eq(Engine.recalcAll(d).perRound.A.diff, 16.1, 'diff without yards');
+  d.courses[0].tees[0].holeYards = YDS;
+  eq(Engine.recalcAll(d).perRound.A.diff, 16.1, 'diff with yards');
+});
+test('back 9 on an 18-hole tee slices the back-nine yards', function () {
+  var d = mkData();
+  d.courses[0].tees[0].holeYards = YDS;
+  var rh = Engine.resolveHoles(d.courses[0].tees[0], { holesPlayed: 9, nineStart: 10 });
+  eq(rh.yards, YDS.slice(9));
+});
+test('wrong-length holeYards is ignored, not propagated', function () {
+  var d = mkData();
+  d.courses[0].tees[0].holeYards = [400, 400];
+  var rh = Engine.resolveHoles(d.courses[0].tees[0], { holesPlayed: 18 });
+  eq(rh.yards, null);
+});
+
 console.log('');
 console.log(passed + ' passed, ' + failed + ' failed');
 if (failed) {
