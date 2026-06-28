@@ -343,6 +343,28 @@ test('back 9 on an 18-hole tee uses back-nine pars and half rating', function ()
   eq(r.perRound.N.diff, 0.4, 'diff');          // back nine mirrors the front in PARS
 });
 
+console.log('Unrated tees (par-3 / pitch-and-putt, no USGA rating)');
+test('round on an unrated tee → status unrated, gross kept, no index impact', function () {
+  var d = mkData();
+  d.courses[0].tees.push({ id: 'tU', name: 'Par3', holes: 18, par: 54,
+    courseRating: null, slopeRating: null, holePars: null, holeHandicaps: null });
+  // three good rated rounds establish an index
+  d.rounds.push(mkRound('A', '2026-01-05', fill(18, 5)));
+  d.rounds.push(mkRound('B', '2026-01-12', fill(18, 5)));
+  d.rounds.push(mkRound('C', '2026-01-19', fill(18, 4)));
+  var idxBefore = Engine.recalcAll(d).index;
+  // now a fully-scored round on the unrated tee
+  var u = mkRound('U', '2026-01-26', fill(18, 3)); u.teeId = 'tU';
+  d.rounds.push(u);
+  var r = Engine.recalcAll(d);
+  eq(r.perRound.U.status, 'unrated', 'status');
+  eq(r.perRound.U.gross, 54, 'gross kept');
+  eq(r.perRound.U.toPar, 0, 'to par');
+  eq(r.perRound.U.diff, null, 'no differential');
+  eq(r.index, idxBefore, 'index unchanged by the unrated round');
+  eq(r.postedCount, 3, 'unrated round not posted');
+});
+
 console.log('resolveHoles — optional per-hole yardages (display only)');
 var YDS = [385, 510, 165, 401, 377, 528, 150, 412, 390, 366, 540, 172, 398, 405, 515, 145, 388, 379];
 test('yards passed through on a full 18 when the tee has them', function () {

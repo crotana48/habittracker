@@ -12,40 +12,55 @@
 <title>Golf Tracker</title>
 <style>
   :root {
-    --bg:        #0d0d11;
-    --bg2:       #131319;
-    --bg3:       #1c1c26;
-    --card:      #17171f;
-    --card2:     #1f1f2b;
-    --border:    #2a2a38;
-    --border2:   #34344a;
-    --text:      #e8e8f0;
-    --text2:     #9a9ab2;
-    --text3:     #5e5e76;
-    --green:     #4ade80;  --green2: #22c55e;
-    --green-dim: rgba(74,222,128,0.08);
-    --amber:     #fb923c;  --amber2: #f97316;
-    --amber-dim: rgba(251,146,60,0.10);
-    --red:       #f87171;  --red2: #ef4444;
-    --red-dim:   rgba(248,113,113,0.07);
+    --bg:        #08080c;
+    --bg2:       #101017;
+    --bg3:       #1a1a24;
+    --card:      #16161f;
+    --card2:     #20202c;
+    --border:    #262634;
+    --border2:   #36364c;
+    --text:      #edeef5;
+    --text2:     #9c9cb6;
+    --text3:     #61617a;
+    --green:     #4ade80;  --green2: #22c55e;  --green3: #16a34a;
+    --green-dim: rgba(74,222,128,0.10);
+    --amber:     #fbbf24;  --amber2: #f59e0b;
+    --amber-dim: rgba(251,191,36,0.12);
+    --red:       #fb7185;  --red2: #f43f5e;
+    --red-dim:   rgba(251,113,133,0.10);
     --blue:      #60a5fa;
-    --blue-dim:  rgba(96,165,250,0.10);
+    --blue-dim:  rgba(96,165,250,0.12);
     --purple:    #a78bfa;
-    --purple-dim:rgba(167,139,250,0.10);
+    --purple-dim:rgba(167,139,250,0.12);
+    --radius:    18px;
+    --shadow:    0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.7);
+    --shadow-lg: 0 12px 40px -16px rgba(0,0,0,0.85);
     --sab: env(safe-area-inset-bottom, 0px);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-size: 15px; line-height: 1.45; }
+    font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  /* ambient depth — fixed aura behind everything, no DOM cost */
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(120% 70% at 50% -10%, rgba(34,197,94,0.10), transparent 60%),
+      radial-gradient(90% 60% at 110% 8%, rgba(96,165,250,0.07), transparent 55%),
+      radial-gradient(80% 50% at -10% 20%, rgba(167,139,250,0.06), transparent 55%),
+      var(--bg); }
   button { font-family: inherit; color: inherit; }
+  ::selection { background: rgba(74,222,128,0.25); }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
   /* ── Header ── */
   .app-header { position: sticky; top: 0; z-index: 40; display: flex; align-items: center;
-    justify-content: space-between; padding: 12px 16px; background: rgba(19,19,25,0.92);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
-  .app-title { font-weight: 800; font-size: 17px; letter-spacing: 0.3px; }
-  .app-title .flag-emoji { margin-right: 6px; }
+    justify-content: space-between; padding: 13px 16px; background: rgba(12,12,18,0.72);
+    backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .app-title { font-weight: 800; font-size: 17px; letter-spacing: 0.2px;
+    background: linear-gradient(92deg, var(--text), var(--text2)); -webkit-background-clip: text;
+    background-clip: text; -webkit-text-fill-color: transparent; }
+  .app-title .flag-emoji { margin-right: 6px; -webkit-text-fill-color: initial; }
   .sync-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3);
     background: var(--bg3); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
   .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
@@ -57,11 +72,12 @@
   /* ── Layout ── */
   main { max-width: 520px; margin: 0 auto; padding: 14px 14px calc(86px + var(--sab)); }
   .tab { display: none; }
-  .tab.active { display: block; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 14px; margin-bottom: 12px; }
-  .card-title { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-    color: var(--text3); margin: 0 0 10px; display: flex; align-items: center; justify-content: space-between; }
+  .tab.active { display: block; animation: rise 0.32s ease both; }
+  .card { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 15px; margin-bottom: 13px; box-shadow: var(--shadow);
+    position: relative; }
+  .card-title { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--text3); margin: 0 0 11px; display: flex; align-items: center; justify-content: space-between; }
   .muted { color: var(--text2); } .dim { color: var(--text3); }
   .small { font-size: 12px; }
   .row { display: flex; align-items: center; gap: 10px; }
@@ -70,33 +86,38 @@
 
   /* ── Bottom tab bar ── */
   .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid;
-    grid-template-columns: repeat(4, 1fr); background: rgba(19,19,25,0.95);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    border-top: 1px solid var(--border); padding-bottom: var(--sab); }
-  .tabbtn { background: none; border: none; padding: 9px 0 7px; cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    color: var(--text3); font-size: 11px; font-weight: 600; min-height: 56px; }
-  .tabbtn .ticon { font-size: 21px; line-height: 1; filter: grayscale(1) opacity(0.55); }
+    grid-template-columns: repeat(4, 1fr); background: rgba(12,12,18,0.82);
+    backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border-top: 1px solid rgba(255,255,255,0.06); padding-bottom: var(--sab); }
+  .tabbtn { background: none; border: none; padding: 10px 0 8px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--text3); font-size: 11px; font-weight: 600; min-height: 58px;
+    position: relative; transition: color 0.2s; }
+  .tabbtn .ticon { font-size: 21px; line-height: 1; filter: grayscale(1) opacity(0.5); transition: transform 0.2s, filter 0.2s; }
   .tabbtn.active { color: var(--green); }
-  .tabbtn.active .ticon { filter: none; }
+  .tabbtn.active .ticon { filter: none; transform: translateY(-1px) scale(1.08); }
+  .tabbtn.active::before { content: ""; position: absolute; top: 0; width: 26px; height: 3px;
+    border-radius: 0 0 3px 3px; background: var(--green); box-shadow: 0 0 12px var(--green); }
 
   /* ── Buttons & inputs ── */
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    background: var(--bg3); border: 1px solid var(--border2); border-radius: 12px;
+    background: linear-gradient(180deg, var(--card2), var(--bg3)); border: 1px solid var(--border2); border-radius: 13px;
     color: var(--text); font-size: 15px; font-weight: 600; padding: 12px 16px;
-    min-height: 48px; cursor: pointer; }
-  .btn:active { background: var(--card2); }
-  .btn-primary { background: var(--green2); border-color: var(--green2); color: #06250f; }
-  .btn-primary:active { background: var(--green); }
-  .btn-danger { color: var(--red); border-color: rgba(248,113,113,0.4); background: var(--red-dim); }
-  .btn-big { width: 100%; min-height: 54px; font-size: 16px; }
-  .btn-sm { min-height: 38px; padding: 7px 12px; font-size: 13px; border-radius: 10px; }
-  .btn-ghost { background: none; border-color: transparent; color: var(--text2); }
+    min-height: 48px; cursor: pointer; transition: transform 0.12s ease, filter 0.15s, box-shadow 0.15s; }
+  .btn:active { transform: scale(0.975); filter: brightness(1.15); }
+  .btn-primary { background: linear-gradient(180deg, var(--green), var(--green3)); border: none; color: #052e13;
+    font-weight: 700; box-shadow: 0 6px 18px -6px rgba(34,197,94,0.55), inset 0 1px 0 rgba(255,255,255,0.25); }
+  .btn-primary:active { background: linear-gradient(180deg, var(--green), var(--green2)); }
+  .btn-danger { color: var(--red); border-color: rgba(251,113,133,0.4); background: var(--red-dim); }
+  .btn-big { width: 100%; min-height: 54px; font-size: 16px; border-radius: 15px; }
+  .btn-sm { min-height: 38px; padding: 7px 12px; font-size: 13px; border-radius: 10px; box-shadow: none; }
+  .btn-ghost { background: none; border-color: transparent; color: var(--text2); box-shadow: none; }
   input[type=text], input[type=password], input[type=number], input[type=date], select, textarea {
-    width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 10px;
+    width: 100%; background: var(--bg2); border: 1px solid var(--border2); border-radius: 11px;
     color: var(--text); font-size: 16px; padding: 11px 12px; font-family: inherit;
-    -webkit-appearance: none; appearance: none; }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green2); }
+    -webkit-appearance: none; appearance: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green2);
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.16); }
   textarea { resize: vertical; min-height: 64px; }
   label.fld { display: block; margin-bottom: 10px; }
   label.fld > span { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
@@ -104,16 +125,18 @@
     background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
 
   /* segmented control */
-  .seg { display: flex; background: var(--bg3); border: 1px solid var(--border2); border-radius: 11px; padding: 3px; gap: 3px; }
-  .seg button { flex: 1; background: none; border: none; border-radius: 8px; padding: 9px 4px;
-    font-size: 14px; font-weight: 600; color: var(--text2); cursor: pointer; min-height: 40px; }
-  .seg button.on { background: var(--card2); color: var(--text); box-shadow: 0 0 0 1px var(--border2); }
+  .seg { display: flex; background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; background: none; border: none; border-radius: 9px; padding: 9px 4px;
+    font-size: 14px; font-weight: 600; color: var(--text2); cursor: pointer; min-height: 40px; transition: background 0.18s, color 0.18s; }
+  .seg button.on { background: linear-gradient(180deg, var(--card2), var(--bg3)); color: var(--text);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px -4px rgba(0,0,0,0.6); }
   .seg button.on.good { color: var(--green); }
   .seg button.on.bad { color: var(--red); }
 
   /* chips / badges */
-  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600;
-    border-radius: 999px; padding: 3px 9px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600;
+    border-radius: 999px; padding: 3px 9px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+    letter-spacing: 0.2px; }
   .chip.green { color: var(--green); background: var(--green-dim); border-color: rgba(74,222,128,0.25); }
   .chip.amber { color: var(--amber); background: var(--amber-dim); border-color: rgba(251,146,60,0.3); }
   .chip.red   { color: var(--red); background: var(--red-dim); border-color: rgba(248,113,113,0.3); }
@@ -121,20 +144,30 @@
   .chip.purple{ color: var(--purple); background: var(--purple-dim); border-color: rgba(167,139,250,0.3); }
 
   /* ── Hero (handicap index) ── */
-  .hero { text-align: center; padding: 20px 14px 14px; }
-  .hero-label { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; color: var(--text3); }
+  .hero { text-align: center; padding: 22px 14px 16px; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; top: -40%; left: 50%; transform: translateX(-50%);
+    width: 70%; height: 120%; background: radial-gradient(closest-side, rgba(74,222,128,0.16), transparent 70%);
+    pointer-events: none; }
+  .hero-label { font-size: 11px; font-weight: 700; letter-spacing: 1.8px; color: var(--text3); position: relative; }
   .hero-label .chip { margin-left: 6px; vertical-align: 1px; }
-  .hero-index { font-size: 64px; font-weight: 800; line-height: 1.05; letter-spacing: -1px;
-    font-variant-numeric: tabular-nums; margin: 6px 0 0; }
-  .hero-sub { color: var(--text2); font-size: 13px; margin-top: 2px; }
-  .hero svg { width: 100%; height: 46px; margin-top: 10px; }
-  .hero .capnote { margin-top: 8px; }
+  .hero-index { font-size: 68px; font-weight: 800; line-height: 1.05; letter-spacing: -2px;
+    font-variant-numeric: tabular-nums; margin: 4px 0 0; position: relative;
+    background: linear-gradient(180deg, #ffffff 10%, #8ff0b3 130%); -webkit-background-clip: text;
+    background-clip: text; -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 36px rgba(74,222,128,0.25); }
+  .hero-sub { color: var(--text2); font-size: 13px; margin-top: 3px; position: relative; }
+  .hero svg { width: 100%; height: 48px; margin-top: 12px; position: relative; }
+  .hero .capnote { margin-top: 8px; position: relative; }
 
   /* ── Round cards ── */
-  .round-card { display: flex; align-items: center; gap: 12px; background: var(--card);
-    border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 9px; cursor: pointer; }
-  .round-card.counting { border-color: rgba(74,222,128,0.45); background: linear-gradient(var(--green-dim), transparent 70%), var(--card); }
-  .rc-gross { font-size: 26px; font-weight: 800; min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+  .round-card { display: flex; align-items: center; gap: 12px;
+    background: linear-gradient(180deg, var(--card2), var(--card));
+    border: 1px solid var(--border); border-radius: 15px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer;
+    box-shadow: var(--shadow); transition: transform 0.12s ease, border-color 0.15s; }
+  .round-card:active { transform: scale(0.99); }
+  .round-card.counting { border-color: rgba(74,222,128,0.45);
+    background: linear-gradient(120deg, var(--green-dim), transparent 60%), linear-gradient(180deg, var(--card2), var(--card)); }
+  .rc-gross { font-size: 27px; font-weight: 800; min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
   .rc-gross .topar { display: block; font-size: 12px; font-weight: 700; }
   .topar.under { color: var(--green); } .topar.over { color: var(--text2); } .topar.even { color: var(--blue); }
   .rc-main { flex: 1; min-width: 0; }
@@ -146,11 +179,15 @@
   .star { color: var(--green); font-size: 13px; }
 
   /* ── Score entry screen ── */
-  .screen { position: fixed; inset: 0; z-index: 60; background: var(--bg); display: none;
-    flex-direction: column; overscroll-behavior: contain; }
+  .screen { position: fixed; inset: 0; z-index: 60; display: none;
+    flex-direction: column; overscroll-behavior: contain;
+    background:
+      radial-gradient(120% 50% at 50% -5%, rgba(34,197,94,0.10), transparent 55%),
+      var(--bg); }
   .screen.open { display: flex; }
   .screen-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
-    border-bottom: 1px solid var(--border); background: var(--bg2); }
+    border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(16,16,23,0.55);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
   .screen-head .x { background: var(--bg3); border: 1px solid var(--border2); border-radius: 10px;
     width: 42px; height: 42px; font-size: 19px; cursor: pointer; flex: none; }
   .screen-head .t { flex: 1; min-width: 0; }
@@ -160,8 +197,9 @@
   .screen-foot { padding: 10px 14px calc(12px + var(--sab)); border-top: 1px solid var(--border); background: var(--bg2); }
 
   /* course identity: monogram badge, deterministic accent set inline */
-  .cbadge { width: 34px; height: 34px; border-radius: 10px; flex: none; display: flex;
-    align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: 0.5px; }
+  .cbadge { width: 36px; height: 36px; border-radius: 11px; flex: none; display: flex;
+    align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: 0.5px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
 
   /* hole entry */
   .hole-head { text-align: center; margin: 2px 0 4px; }
@@ -174,12 +212,16 @@
     background: var(--bg3); border: 1px solid var(--green2); border-radius: 14px; color: var(--text); padding: 8px 0; }
   .putts-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0 0; }
   .putts-row > span { font-size: 14px; font-weight: 600; color: var(--text2); }
-  .stepbtn { width: 86px; height: 86px; border-radius: 22px; background: var(--bg3);
+  .stepbtn { width: 86px; height: 86px; border-radius: 26px;
+    background: linear-gradient(180deg, var(--card2), var(--bg3));
     border: 1px solid var(--border2); font-size: 38px; font-weight: 700; color: var(--text);
-    cursor: pointer; flex: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-  .stepbtn:active { background: var(--card2); border-color: var(--green2); }
-  .score-display { width: 110px; text-align: center; }
-  .score-display .num { font-size: 72px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+    cursor: pointer; flex: none; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    box-shadow: var(--shadow); transition: transform 0.1s, border-color 0.15s, box-shadow 0.15s; }
+  .stepbtn:active { transform: scale(0.93); border-color: var(--green2);
+    box-shadow: 0 0 0 4px rgba(34,197,94,0.16); }
+  .score-display { width: 116px; text-align: center; }
+  .score-display .num { font-size: 76px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
+    letter-spacing: -2px; }
   .score-display .rel { font-size: 14px; font-weight: 700; margin-top: 2px; min-height: 20px; }
   .nav-row { display: flex; gap: 10px; margin: 14px 0 4px; }
   .nav-row .btn { flex: none; width: 64px; font-size: 20px; }
@@ -210,12 +252,12 @@
   /* hole strip */
   .strip { display: flex; gap: 5px; overflow-x: auto; padding: 10px 2px 6px; scrollbar-width: none; }
   .strip::-webkit-scrollbar { display: none; }
-  .strip .h { flex: none; width: 34px; height: 44px; border-radius: 9px; background: var(--bg3);
+  .strip .h { flex: none; width: 34px; height: 44px; border-radius: 10px; background: var(--bg2);
     border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center;
-    justify-content: center; cursor: pointer; font-variant-numeric: tabular-nums; }
+    justify-content: center; cursor: pointer; font-variant-numeric: tabular-nums; transition: border-color 0.15s, background 0.15s; }
   .strip .h .n { font-size: 10px; color: var(--text3); }
   .strip .h .s { font-size: 15px; font-weight: 800; }
-  .strip .h.cur { border-color: var(--green2); background: var(--green-dim); }
+  .strip .h.cur { border-color: var(--green2); background: var(--green-dim); box-shadow: 0 0 0 3px rgba(34,197,94,0.14); }
   .strip .h.under .s { color: var(--green); }
   .strip .h.dbl .s { color: var(--red); }
   .strip .h.empty .s { color: var(--text3); }
@@ -223,7 +265,8 @@
 
   /* review */
   .rev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-  .rev-cell { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+  .rev-cell { background: linear-gradient(180deg, var(--card2), var(--bg3)); border: 1px solid var(--border);
+    border-radius: 13px; padding: 11px 13px; box-shadow: var(--shadow); }
   .rev-cell .k { font-size: 11px; color: var(--text3); font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
   .rev-cell .v { font-size: 22px; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
   .rev-cell .v small { font-size: 13px; color: var(--text2); font-weight: 600; }
@@ -241,8 +284,9 @@
 
   /* ── Range ── */
   .stat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .stat-tile { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
-  .stat-tile .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat-tile { background: linear-gradient(180deg, var(--card2), var(--bg3)); border: 1px solid var(--border);
+    border-radius: 14px; padding: 11px 8px; text-align: center; box-shadow: var(--shadow); }
+  .stat-tile .v { font-size: 23px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .stat-tile .k { font-size: 10.5px; color: var(--text3); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; margin-top: 1px; }
   .focus-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .focus-chips .fchip { border: 1px solid var(--border2); background: var(--bg3); color: var(--text2);
@@ -288,8 +332,9 @@
   .modal-ov { position: fixed; inset: 0; z-index: 80; background: rgba(5,5,8,0.72); display: none;
     align-items: flex-end; justify-content: center; }
   .modal-ov.open { display: flex; }
-  .modal { background: var(--card); border: 1px solid var(--border2); border-radius: 18px 18px 0 0;
-    width: 100%; max-width: 520px; padding: 18px 16px calc(18px + var(--sab)); max-height: 86vh; overflow-y: auto; }
+  .modal { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--border2);
+    border-radius: 22px 22px 0 0; width: 100%; max-width: 520px; padding: 18px 16px calc(18px + var(--sab));
+    max-height: 86vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: rise 0.28s ease both; }
   @media (min-width: 521px) { .modal-ov { align-items: center; } .modal { border-radius: 18px; padding-bottom: 18px; } }
   .modal h3 { margin: 0 0 6px; font-size: 17px; }
   .modal .msg { color: var(--text2); font-size: 14px; margin-bottom: 16px; }
@@ -874,6 +919,14 @@ const Engine = (() => {
       res.gross = scores.reduce((a, b) => a + b, 0);
       res.toPar = res.gross - rh.par;
 
+      // Unrated tee (e.g. a par-3 / pitch-and-putt with no USGA rating): the round is
+      // fully scored and shows gross/to-par + per-hole stats, but it cannot produce a
+      // Score Differential, so it never feeds the handicap index. Correct under WHS —
+      // short courses aren't acceptable for posting.
+      if (rh.cr === null || rh.cr === undefined || rh.slope === null || rh.slope === undefined) {
+        res.status = 'unrated'; res.flags.push('unrated'); return;
+      }
+
       const holes = scores.map((s, i) => ({ par: rh.pars[i], si: rh.sis[i], score: s }));
 
       if (n === 18) {
@@ -1137,6 +1190,8 @@ function fmtDate(d) {
   return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: dt.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
 }
 function fmtIndex(i) { return i === null ? '—' : (i < 0 ? '+' + Math.abs(i).toFixed(1) : i.toFixed(1)); }
+function teeRated(t) { return t.courseRating != null && t.slopeRating != null; }
+function teeRL(t) { return teeRated(t) ? (t.courseRating.toFixed(1) + '/' + t.slopeRating) : 'unrated'; }
 
 /* ── Course identity: deterministic accent + monogram from the name ── */
 function courseHue(name) { // FNV-1a → hue, so the same course always gets the same color
@@ -1246,6 +1301,8 @@ function renderRounds() {
         (rd.holesPlayed === 9 ? ' ·9→18' : '') + '</div></div>';
     } else if (res.status === 'pending') {
       chips.push('<span class="chip blue">9-hole · waits for index</span>');
+    } else if (res.status === 'unrated') {
+      chips.push('<span class="chip">practice · unrated</span>');
     } else if (res.status === 'error') {
       chips.push('<span class="chip red">' + (res.flags.includes('missing-tee') ? 'tee deleted' : 'unrated') + '</span>');
     }
@@ -1265,13 +1322,20 @@ function drawSpark(history) {
   const pts = history.slice().sort((a, b) => a.date < b.date ? -1 : 1).map(h => h.index);
   if (pts.length < 2) { svg.innerHTML = ''; svg.style.display = pts.length ? '' : 'none'; return; }
   svg.style.display = '';
-  const W = 300, H = 46, P = 4;
+  const W = 300, H = 46, P = 5;
   const min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
   const x = i => P + i * (W - 2 * P) / (pts.length - 1);
   const y = v => H - P - (v - min) / span * (H - 2 * P); // downward slope = improving index
-  const path = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
-  svg.innerHTML = '<path d="' + path + '" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>' +
-    '<circle cx="' + x(pts.length - 1) + '" cy="' + y(pts[pts.length - 1]) + '" r="3" fill="var(--green)"/>';
+  const line = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  const area = line + ' L' + x(pts.length - 1).toFixed(1) + ' ' + H + ' L' + x(0).toFixed(1) + ' ' + H + ' Z';
+  svg.innerHTML =
+    '<defs><linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="var(--green)" stop-opacity="0.32"/>' +
+    '<stop offset="1" stop-color="var(--green)" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#sparkFill)"/>' +
+    '<path d="' + line + '" fill="none" stroke="var(--green)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="' + x(pts.length - 1) + '" cy="' + y(pts[pts.length - 1]) + '" r="3.4" fill="var(--green)"/>' +
+    '<circle cx="' + x(pts.length - 1) + '" cy="' + y(pts[pts.length - 1]) + '" r="6" fill="var(--green)" opacity="0.25"/>';
 }
 
 /* ── Course-handicap calculator ── */
@@ -1301,6 +1365,7 @@ function renderCHCalc(retried) {
     if (course && !tee && !retried) { renderCHSelects(); return renderCHCalc(true); }
     out.textContent = '—'; det.textContent = 'Add a course to use the calculator.'; return;
   }
+  if (!teeRated(tee)) { out.textContent = '—'; det.textContent = tee.name + ' is unrated — no course handicap.'; return; }
   if (r.index === null) { out.textContent = '—'; det.textContent = 'Needs a handicap index (3 rounds).'; return; }
   const ch = Engine.courseHandicap(r.index, tee.slopeRating, tee.courseRating, tee.par);
   out.textContent = ch > 0 ? String(ch) : (ch === 0 ? '0' : '+' + Math.abs(ch));
@@ -1358,7 +1423,7 @@ function reCourseChanged() {
   const course = courseById(document.getElementById('reCourse').value);
   const tSel = document.getElementById('reTee');
   tSel.innerHTML = (course && course.tees.length)
-    ? course.tees.map(t => '<option value="' + t.id + '">' + esc(t.name) + ' · ' + t.courseRating.toFixed(1) + '/' + t.slopeRating + '</option>').join('')
+    ? course.tees.map(t => '<option value="' + t.id + '">' + esc(t.name) + ' · ' + teeRL(t) + '</option>').join('')
     : '<option value="">No tees on this course</option>';
   reTeeChanged();
 }
@@ -1770,10 +1835,17 @@ async function saveCourse() {
     const label = t.name.trim() || 'tee';
     if (!t.name.trim()) return msgDlg('Tee name missing', 'Name every tee (Blue, White…).');
     if (!(t.par >= 27 && t.par <= 90)) return msgDlg('Check par', 'Par for ' + label + ' looks wrong (' + t.par + ').');
-    if (!(t.courseRating >= 40 && t.courseRating <= 90)) return msgDlg('Check rating', 'Course rating for ' + label + ' must be set (e.g. 71.8).');
-    if (!(t.slopeRating >= 55 && t.slopeRating <= 155)) return msgDlg('Check slope', 'Slope for ' + label + ' must be 55–155.');
+    // An "unrated" tee (both rating + slope left blank) is allowed — rounds there are
+    // tracked for fun but don't post to the index. Otherwise both must be valid.
+    const unrated = (t.courseRating == null || t.courseRating === '') && (t.slopeRating == null || t.slopeRating === '');
+    const ratingMin = t.holes === 9 ? 25 : 40; // 9-hole ratings run ~30–35
+    if (!unrated) {
+      if (!(t.courseRating >= ratingMin && t.courseRating <= 90)) return msgDlg('Check rating', 'Course rating for ' + label + ' must be set (e.g. 71.8), or clear both rating & slope to mark the tee unrated.');
+      if (!(t.slopeRating >= 55 && t.slopeRating <= 155)) return msgDlg('Check slope', 'Slope for ' + label + ' must be 55–155, or clear both rating & slope to mark the tee unrated.');
+    }
     const out = { id: t.id, name: t.name.trim(), holes: t.holes, par: t.par,
-      courseRating: t.courseRating, slopeRating: t.slopeRating, holePars: null, holeHandicaps: null, holeYards: null };
+      courseRating: unrated ? null : t.courseRating, slopeRating: unrated ? null : t.slopeRating,
+      holePars: null, holeHandicaps: null, holeYards: null };
     if (t._detail) {
       const pars = t.holePars || [], sis = t.holeHandicaps || [];
       const parsFilled = pars.filter(p => p >= 3 && p <= 6).length;
@@ -1878,7 +1950,14 @@ const SEED_COURSES = [
   {"id":"92fe14d7-3459-5be7-b1b1-70bb2f91fc41","name":"Blue","holes":18,"par":70,"courseRating":67.4,"slopeRating":112,"holePars":[3,3,3,5,5,4,4,4,3,5,3,4,3,4,5,4,4,4],"holeHandicaps":[6,14,16,4,2,18,8,10,12,5,17,13,3,15,1,11,9,7],"holeYards":[155,165,145,510,460,295,355,330,165,505,180,375,195,305,505,388,390,320]},
   {"id":"584fb818-806a-59a1-9aeb-952b2ec36cae","name":"White","holes":18,"par":70,"courseRating":64.5,"slopeRating":102,"holePars":[3,3,3,5,5,4,4,4,3,5,3,4,3,4,5,4,4,4],"holeHandicaps":[6,14,16,4,2,18,8,10,12,5,17,13,3,15,1,11,9,7],"holeYards":[135,150,115,470,410,265,295,275,150,475,145,325,148,290,465,330,325,305]},
   {"id":"5e7facb9-a6d9-5f80-a570-dfc1d340ad4f","name":"Blue (W)","holes":18,"par":70,"courseRating":73.2,"slopeRating":121,"holePars":null,"holeHandicaps":null,"holeYards":null},
-  {"id":"6614ffe7-9270-5877-a371-bfe98b4e50b6","name":"White (W)","holes":18,"par":70,"courseRating":69.5,"slopeRating":111,"holePars":null,"holeHandicaps":null,"holeYards":null}]}
+  {"id":"6614ffe7-9270-5877-a371-bfe98b4e50b6","name":"White (W)","holes":18,"par":70,"courseRating":69.5,"slopeRating":111,"holePars":null,"holeHandicaps":null,"holeYards":null}]},
+{"id":"b3d81cfc-5781-5267-9bb2-616b3cb4ccc6","name":"Columbia Park Golf Course","seeded":true,"city":"Kennewick, WA","website":"https://www.playcolumbiapark.com","access":"public","dataSource":"Official scorecard (pars/SI/yards) + GolfLink rating, June 2026","tees":[
+  {"id":"5bbe1dbc-e0fd-569d-bffc-8b800763e3b9","name":"Standard","holes":18,"par":55,"courseRating":53.0,"slopeRating":71,"holePars":[3,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3,3,3],"holeHandicaps":[4,10,14,2,12,16,6,18,8,5,17,11,3,1,15,9,13,7],"holeYards":[157,101,93,189,146,133,127,69,130,125,148,129,172,249,130,135,91,123]}]},
+{"id":"ac9725a5-f5de-54f1-9f92-154b4243415d","name":"Buckskin Golf Club","seeded":true,"city":"Richland, WA","website":"http://www.buckskingolfclub.com","access":"public","dataSource":"GolfLink 9-hole ratings + scorecard, June 2026","tees":[
+  {"id":"9100943a-97e3-5ee5-b064-e5ef1453adc0","name":"Blue","holes":9,"par":34,"courseRating":33.3,"slopeRating":103,"holePars":[3,4,5,4,4,4,3,3,4],"holeHandicaps":null,"holeYards":[190,350,495,350,340,350,137,225,345]},
+  {"id":"c41f1f4b-2e65-5fac-a839-6151a31ab3c5","name":"Red","holes":9,"par":34,"courseRating":31.2,"slopeRating":97,"holePars":[3,4,5,4,4,4,3,3,4],"holeHandicaps":null,"holeYards":[150,260,465,310,280,325,125,175,225]}]},
+{"id":"c53a7be9-882a-59cc-8c63-0a45aa42d764","name":"Pasco Golfland","seeded":true,"city":"Pasco, WA","website":"https://www.visittri-cities.com/directory/pasco-golfland/","access":"public","dataSource":"Official yardages; par-3 course, not USGA-rated (June 2026)","tees":[
+  {"id":"0f8748e1-8d44-539f-81ac-daa79016d4d0","name":"Standard","holes":9,"par":27,"courseRating":null,"slopeRating":null,"holePars":[3,3,3,3,3,3,3,3,3],"holeHandicaps":null,"holeYards":[146,141,127,67,100,149,114,120,167]}]}
 ];
 
 function normCourseName(s) {
@@ -2237,7 +2316,7 @@ function renderSettings() {
   list.innerHTML = DATA.courses.length ? DATA.courses.map(c =>
     '<div class="course-item">' + courseBadgeHtml(c.name) + '<div class="grow"><b>' + esc(c.name) + '</b>' +
     (c.city ? ' <span class="small dim">' + esc(c.city) + '</span>' : '') +
-    '<div class="small dim">' + c.tees.map(t => esc(t.name) + ' ' + t.courseRating.toFixed(1) + '/' + t.slopeRating +
+    '<div class="small dim">' + c.tees.map(t => esc(t.name) + ' ' + teeRL(t) +
       ((t.holePars && t.holeHandicaps) ? '' : ' ≈')).join(' · ') + '</div></div>' +
     '<button class="btn btn-sm" onclick="openCourseEditor(\'' + c.id + '\')">Edit</button></div>'
   ).join('') : '<div class="empty">No courses yet — add your home course.</div>';
