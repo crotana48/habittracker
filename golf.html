@@ -201,15 +201,41 @@
     align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: 0.5px;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
 
-  /* hole entry */
-  .hole-head { text-align: center; margin: 2px 0 4px; }
-  .hole-head .hnum { font-size: 30px; font-weight: 800; }
-  .hole-head .hnum svg { vertical-align: -2px; margin-right: 7px; }
-  .hole-head .hmeta { color: var(--text2); font-size: 14px; margin-top: 1px; }
-  .hole-head .hmeta .hyds { font-size: 17px; font-weight: 800; color: var(--text); }
-  .score-row { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 12px 0 6px; }
-  .score-display .num input { width: 100%; font-size: 48px; font-weight: 800; text-align: center;
-    background: var(--bg3); border: 1px solid var(--green2); border-radius: 14px; color: var(--text); padding: 8px 0; }
+  /* hole entry — info card */
+  .hole-card { --accent: var(--green); position: relative; overflow: hidden;
+    border: 1px solid var(--border); border-radius: 18px; padding: 13px 15px 14px; margin: 2px 0 14px;
+    background: linear-gradient(180deg, var(--card2), var(--card)); box-shadow: var(--shadow); }
+  .hole-card::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(150% 130% at -5% -45%, var(--accent-glow, rgba(74,222,128,0.18)), transparent 58%); }
+  .hole-card > * { position: relative; }
+  .hc-top { display: flex; align-items: center; justify-content: space-between; }
+  .hc-num { display: flex; align-items: center; gap: 9px; font-size: 25px; font-weight: 800; letter-spacing: -0.4px; }
+  .hc-num svg { flex: none; }
+  .hc-prog { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: var(--text3);
+    font-variant-numeric: tabular-nums; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 11px; }
+  .hc-stats { display: flex; gap: 8px; margin-top: 12px; }
+  .hc-stat { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 13px;
+    padding: 8px 6px 9px; text-align: center; }
+  .hc-stat .k { font-size: 9.5px; font-weight: 700; letter-spacing: 1.2px; color: var(--text3); text-transform: uppercase; }
+  .hc-stat .v { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; line-height: 1; }
+  .hc-stat.yards { border-color: color-mix(in srgb, var(--accent) 38%, var(--border)); }
+  .hc-stat.yards .v { color: var(--accent); }
+
+  /* hole entry — score */
+  .score-zone { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 10px 0 4px; }
+  .score-center { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+  .score-puck { width: 138px; height: 138px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 34%, var(--bg3), var(--bg2)); border: 2px solid var(--border2);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.45), 0 14px 34px -16px rgba(0,0,0,0.85);
+    transition: border-color 0.22s, box-shadow 0.22s; }
+  .score-puck .num { font-size: 64px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
+    letter-spacing: -3px; cursor: pointer; }
+  #reScore input { width: 104px; font-size: 52px; font-weight: 800; text-align: center; letter-spacing: -2px;
+    background: var(--bg3); border: 2px solid var(--green2); border-radius: 18px; color: var(--text); padding: 4px 0;
+    box-shadow: 0 0 0 4px rgba(34,197,94,0.16); }
+  .score-center .rel { font-size: 12.5px; font-weight: 700; min-height: 24px; display: flex; align-items: center;
+    padding: 3px 13px; border-radius: 999px; border: 1px solid transparent; letter-spacing: 0.2px; }
   .putts-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0 0; }
   .putts-row > span { font-size: 14px; font-weight: 600; color: var(--text2); }
   .stepbtn { width: 86px; height: 86px; border-radius: 26px;
@@ -261,7 +287,9 @@
   .strip .h.under .s { color: var(--green); }
   .strip .h.dbl .s { color: var(--red); }
   .strip .h.empty .s { color: var(--text3); }
-  .running { text-align: center; font-size: 14px; color: var(--text2); font-weight: 600; margin-top: 4px; }
+  .running { text-align: center; font-size: 14px; color: var(--text2); font-weight: 600; margin-top: 8px; }
+  .running b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .running .topar { font-weight: 800; }
 
   /* review */
   .rev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
@@ -527,14 +555,19 @@
     </div>
 
     <div id="rePlay" style="display:none">
-      <div class="hole-head">
-        <div class="hnum" id="reHoleNum">Hole 1</div>
-        <div class="hmeta" id="reHoleMeta">Par 4 · SI 7</div>
+      <div class="hole-card" id="reHoleCard">
+        <div class="hc-top">
+          <div class="hc-num" id="reHoleNum">Hole 1</div>
+          <div class="hc-prog" id="reHoleProg"></div>
+        </div>
+        <div class="hc-stats" id="reHoleMeta"></div>
       </div>
-      <div class="score-row">
+      <div class="score-zone">
         <button class="stepbtn" id="btnScMinus" onclick="bumpScore(-1)">−</button>
-        <div class="score-display">
-          <div class="num" id="reScore" onclick="editScoreTyped()">4</div>
+        <div class="score-center">
+          <div class="score-puck" id="reScorePuck">
+            <div class="num" id="reScore" onclick="editScoreTyped()">4</div>
+          </div>
           <div class="rel" id="reScoreRel"></div>
         </div>
         <button class="stepbtn" id="btnScPlus" onclick="bumpScore(1)">＋</button>
@@ -1202,6 +1235,15 @@ function courseHue(name) { // FNV-1a → hue, so the same course always gets the
 }
 function courseAccent(name) { return 'hsl(' + courseHue(name) + ',60%,64%)'; }
 function courseAccentDim(name) { return 'hsla(' + courseHue(name) + ',60%,64%,0.14)'; }
+function courseAccentGlow(name) { return 'hsla(' + courseHue(name) + ',65%,58%,0.22)'; }
+
+// Score-relative-to-par palette (birdie green → par blue → bogey amber → double+ red).
+function relStyle(rel) {
+  if (rel < 0)  return { color: 'var(--green)', bg: 'var(--green-dim)', bd: 'rgba(74,222,128,0.32)',  glow: 'rgba(74,222,128,0.5)' };
+  if (rel === 0) return { color: 'var(--blue)',  bg: 'var(--blue-dim)',  bd: 'rgba(96,165,250,0.32)',  glow: 'rgba(96,165,250,0.5)' };
+  if (rel === 1) return { color: 'var(--amber)', bg: 'var(--amber-dim)', bd: 'rgba(251,191,36,0.32)',  glow: 'rgba(251,191,36,0.5)' };
+  return { color: 'var(--red)', bg: 'var(--red-dim)', bd: 'rgba(251,113,133,0.32)', glow: 'rgba(251,113,133,0.5)' };
+}
 function courseMonogram(name) {
   const w = String(name).trim().split(/\s+/).filter(x => /[a-z0-9]/i.test(x));
   return ((w[0] ? w[0][0] : '?') + (w[1] ? w[1][0] : '')).toUpperCase();
@@ -1501,20 +1543,38 @@ function renderPlay() {
   const par = RE.rh.pars[i], si = RE.rh.sis[i];
   const yds = RE.rh.yards ? RE.rh.yards[i] : null;
   const approx = RE.rh.flags.includes('approx-pars') || RE.rh.flags.includes('approx-si');
-  document.getElementById('reHoleNum').innerHTML =
-    parGlyph(par, courseAccent(RE.course.name)) + 'Hole ' + holeLabel(i);
-  document.getElementById('reHoleMeta').innerHTML = 'Par ' + par +
-    (yds ? ' · <span class="hyds">' + yds + ' yds</span>' : '') +
-    ' · SI ' + si + (approx ? ' ≈' : '');
+  const accent = courseAccent(RE.course.name);
+  const card = document.getElementById('reHoleCard');
+  card.style.setProperty('--accent', accent);
+  card.style.setProperty('--accent-glow', courseAccentGlow(RE.course.name));
+  document.getElementById('reHoleNum').innerHTML = parGlyph(par, accent) + 'Hole ' + holeLabel(i);
+  document.getElementById('reHoleProg').textContent = (i + 1) + ' / ' + n;
+  const stat = (k, v, cls) => '<div class="hc-stat' + (cls ? ' ' + cls : '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
+  document.getElementById('reHoleMeta').innerHTML =
+    stat('Par', par) +
+    (yds ? stat('Yards', yds, 'yards') : '') +
+    stat('SI', si + (approx ? ' ≈' : ''));
+
   const committed = RE.round.scores[i] >= 1;
   const s = shownScore();
+  const rel = s - par;
+  const rc = relStyle(rel);
   const scoreEl = document.getElementById('reScore');
   scoreEl.textContent = s;
-  scoreEl.style.color = committed ? 'var(--text)' : 'var(--text3)';
-  const rel = s - par;
+  scoreEl.style.color = committed ? rc.color : 'var(--text3)';
+  const puck = document.getElementById('reScorePuck');
+  puck.style.borderColor = committed ? rc.color : 'var(--border2)';
+  puck.style.boxShadow = committed
+    ? 'inset 0 2px 8px rgba(0,0,0,0.45), 0 0 26px -6px ' + rc.glow
+    : 'inset 0 2px 8px rgba(0,0,0,0.45), 0 14px 34px -16px rgba(0,0,0,0.85)';
   const relEl = document.getElementById('reScoreRel');
-  relEl.textContent = committed ? (REL_NAMES[rel] ?? (rel > 0 ? '+' + rel : rel)) : 'tap to confirm par';
-  relEl.style.color = rel < 0 ? 'var(--green)' : rel === 0 ? 'var(--blue)' : rel >= 2 ? 'var(--red)' : 'var(--text2)';
+  if (committed) {
+    relEl.textContent = REL_NAMES[rel] ?? (rel > 0 ? '+' + rel : rel);
+    relEl.style.color = rc.color; relEl.style.background = rc.bg; relEl.style.borderColor = rc.bd;
+  } else {
+    relEl.textContent = 'tap to enter score';
+    relEl.style.color = 'var(--text3)'; relEl.style.background = 'transparent'; relEl.style.borderColor = 'transparent';
+  }
   document.getElementById('btnScMinus').disabled = s <= 1;
   document.getElementById('nextLabel').textContent = (i === n - 1) ? 'Review ✓' : 'Next hole ▸';
 
@@ -1538,7 +1598,11 @@ function renderPlay() {
   if (curChip) curChip.scrollIntoView({ block: 'nearest', inline: 'center' });
   let g = 0, p = 0, cnt = 0;
   RE.round.scores.forEach((sc, j) => { if (sc >= 1) { g += sc; p += RE.rh.pars[j]; cnt++; } });
-  document.getElementById('reRunning').textContent = cnt ? ('Thru ' + cnt + ':  ' + g + '  (' + fmtToPar(g - p) + ')') : 'No scores yet';
+  const runEl = document.getElementById('reRunning');
+  if (cnt) {
+    const tp = g - p;
+    runEl.innerHTML = 'Thru ' + cnt + ' · <b>' + g + '</b> <span class="topar ' + toParClass(tp) + '">' + fmtToPar(tp) + '</span>';
+  } else runEl.textContent = 'No scores yet';
 }
 function paintSeg(id, val) {
   const seg = document.getElementById(id);
