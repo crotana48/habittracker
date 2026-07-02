@@ -33,7 +33,7 @@
     --purple:    #a78bfa;
     --purple-dim:rgba(167,139,250,0.12);
     --radius:    18px;
-    --shadow:    0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.7);
+    --shadow:    0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.045);
     --shadow-lg: 0 12px 40px -16px rgba(0,0,0,0.85);
     --sab: env(safe-area-inset-bottom, 0px);
   }
@@ -48,6 +48,13 @@
       radial-gradient(90% 60% at 110% 8%, rgba(96,165,250,0.07), transparent 55%),
       radial-gradient(80% 50% at -10% 20%, rgba(167,139,250,0.06), transparent 55%),
       var(--bg); }
+  /* launch-monitor tracer grid, fading out below the fold */
+  body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      repeating-linear-gradient(0deg, rgba(140,255,190,0.05) 0 1px, transparent 1px 42px),
+      repeating-linear-gradient(90deg, rgba(140,255,190,0.05) 0 1px, transparent 1px 42px);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 45%, transparent 78%);
+    mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 45%, transparent 78%); }
   button { font-family: inherit; color: inherit; }
   ::selection { background: rgba(74,222,128,0.25); }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -91,7 +98,8 @@
     border-top: 1px solid rgba(255,255,255,0.06); padding-bottom: var(--sab); }
   .tabbtn { background: none; border: none; padding: 10px 0 8px; cursor: pointer;
     display: flex; flex-direction: column; align-items: center; gap: 3px;
-    color: var(--text3); font-size: 11px; font-weight: 600; min-height: 58px;
+    color: var(--text3); font-size: 9.5px; font-weight: 700; min-height: 58px;
+    text-transform: uppercase; letter-spacing: 1.4px;
     position: relative; transition: color 0.2s; }
   .tabbtn .ticon { font-size: 21px; line-height: 1; filter: grayscale(1) opacity(0.5); transition: transform 0.2s, filter 0.2s; }
   .tabbtn.active { color: var(--green); }
@@ -156,7 +164,8 @@
     background-clip: text; -webkit-text-fill-color: transparent;
     text-shadow: 0 0 36px rgba(74,222,128,0.25); }
   .hero-sub { color: var(--text2); font-size: 13px; margin-top: 3px; position: relative; }
-  .hero svg { width: 100%; height: 48px; margin-top: 12px; position: relative; }
+  .hero svg { width: 100%; height: 48px; margin-top: 12px; position: relative;
+    filter: drop-shadow(0 0 7px rgba(74,222,128,0.35)); }
   .hero .capnote { margin-top: 8px; position: relative; }
 
   /* ── Round cards ── */
@@ -207,28 +216,49 @@
     background: linear-gradient(180deg, var(--card2), var(--card)); box-shadow: var(--shadow); }
   .hole-card::before { content: ""; position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(150% 130% at -5% -45%, var(--accent-glow, rgba(74,222,128,0.18)), transparent 58%); }
+  /* tracer line across the top edge */
+  .hole-card::after { content: ""; position: absolute; top: 0; left: 8%; right: 8%; height: 1.5px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.6;
+    box-shadow: 0 0 10px var(--accent); }
   .hole-card > * { position: relative; }
   .hc-top { display: flex; align-items: center; justify-content: space-between; }
   .hc-num { display: flex; align-items: center; gap: 9px; font-size: 25px; font-weight: 800; letter-spacing: -0.4px; }
-  .hc-num svg { flex: none; }
-  .hc-prog { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: var(--text3);
-    font-variant-numeric: tabular-nums; background: var(--bg2); border: 1px solid var(--border);
+  .hc-num svg { flex: none; filter: drop-shadow(0 0 5px var(--accent)); }
+  .hc-prog { font-size: 12px; font-weight: 700; letter-spacing: 1px; font-variant-numeric: tabular-nums;
+    color: color-mix(in srgb, var(--accent) 75%, var(--text));
+    background: color-mix(in srgb, var(--accent) 9%, var(--bg2));
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
     border-radius: 999px; padding: 4px 11px; }
   .hc-stats { display: flex; gap: 8px; margin-top: 12px; }
   .hc-stat { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 13px;
     padding: 8px 6px 9px; text-align: center; }
-  .hc-stat .k { font-size: 9.5px; font-weight: 700; letter-spacing: 1.2px; color: var(--text3); text-transform: uppercase; }
+  .hc-stat .k { font-size: 9.5px; font-weight: 700; letter-spacing: 1.6px; color: var(--text3); text-transform: uppercase; }
   .hc-stat .v { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; line-height: 1; }
-  .hc-stat.yards { border-color: color-mix(in srgb, var(--accent) 38%, var(--border)); }
-  .hc-stat.yards .v { color: var(--accent); }
+  .hc-stat.yards { border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg2)); }
+  .hc-stat.yards .v { color: var(--accent); text-shadow: 0 0 16px var(--accent); }
 
   /* hole entry — score */
   .score-zone { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 10px 0 4px; }
   .score-center { display: flex; flex-direction: column; align-items: center; gap: 9px; }
-  .score-puck { width: 138px; height: 138px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(circle at 50% 34%, var(--bg3), var(--bg2)); border: 2px solid var(--border2);
+  .score-puck { width: 138px; height: 138px; border-radius: 50%; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    background: /* golf-ball dimples (two offset lattices) over the sphere shading */
+      radial-gradient(circle at 5px 5px, rgba(255,255,255,0.05) 1.4px, transparent 2.2px) 0 0 / 17px 17px,
+      radial-gradient(circle at 5px 5px, rgba(255,255,255,0.035) 1.4px, transparent 2.2px) 8.5px 8.5px / 17px 17px,
+      radial-gradient(circle at 50% 32%, var(--bg3), var(--bg2) 78%);
+    border: 2px solid var(--border2);
     box-shadow: inset 0 2px 8px rgba(0,0,0,0.45), 0 14px 34px -16px rgba(0,0,0,0.85);
     transition: border-color 0.22s, box-shadow 0.22s; }
+  /* seam arc, like a ball logo line */
+  .score-puck::before { content: ""; position: absolute; inset: 10px; border-radius: 50%; pointer-events: none;
+    border: 1.5px solid rgba(255,255,255,0.055); border-left-color: transparent; border-right-color: transparent;
+    transform: rotate(-18deg); }
+  /* one-shot expanding ring when a score is committed */
+  .score-puck::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; pointer-events: none;
+    border: 2px solid var(--ring, var(--green)); opacity: 0; }
+  .score-puck.pulse::after { animation: ringwave 0.55s ease-out; }
+  @keyframes ringwave { 0% { opacity: 0.85; transform: scale(1); } 100% { opacity: 0; transform: scale(1.42); } }
   .score-puck .num { font-size: 64px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
     letter-spacing: -3px; cursor: pointer; }
   #reScore input { width: 104px; font-size: 52px; font-weight: 800; text-align: center; letter-spacing: -2px;
@@ -376,7 +406,8 @@
   .banner.warn { background: var(--amber-dim); border: 1px solid rgba(251,146,60,0.35); color: var(--amber); }
   .banner .btn-sm { margin-top: 8px; }
   .footer-note { color: var(--text3); font-size: 11.5px; text-align: center; padding: 4px 18px 10px; line-height: 1.6; }
-  .ch-big { font-size: 40px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+  .ch-big { font-size: 40px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 22px rgba(74,222,128,0.35); }
   .list-plain { margin: 0; padding: 0; list-style: none; }
   h4.sec { font-size: 13px; color: var(--text2); margin: 16px 0 8px; }
 </style>
@@ -1301,6 +1332,9 @@ function renderRounds() {
   const sub = document.getElementById('heroSub');
   hero.textContent = fmtIndex(r.index);
   hero.style.color = r.index === null ? 'var(--text3)' : 'var(--text)';
+  // the gradient text fill would otherwise paint the "—" empty state as a solid bar
+  hero.style.webkitTextFillColor = r.index === null ? 'var(--text3)' : '';
+  hero.style.textShadow = r.index === null ? 'none' : '';
   if (r.index === null) {
     sub.textContent = r.postedCount + ' of 3 rounds posted' + (r.pendingCount ? ' · ' + r.pendingCount + ' nine-hole waiting' : '');
   } else {
@@ -1563,6 +1597,7 @@ function renderPlay() {
   scoreEl.textContent = s;
   scoreEl.style.color = committed ? rc.color : 'var(--text3)';
   const puck = document.getElementById('reScorePuck');
+  puck.style.setProperty('--ring', rc.color);
   puck.style.borderColor = committed ? rc.color : 'var(--border2)';
   puck.style.boxShadow = committed
     ? 'inset 0 2px 8px rgba(0,0,0,0.45), 0 0 26px -6px ' + rc.glow
@@ -1619,7 +1654,14 @@ function bumpScore(d) {
   RE.round.scores[RE.cur] = s;
   persist();
   renderPlay();
+  pulseScore();
   armAutoAdvance();
+}
+function pulseScore() {
+  const p = document.getElementById('reScorePuck');
+  p.classList.remove('pulse');
+  void p.offsetWidth; // restart the one-shot animation
+  p.classList.add('pulse');
 }
 
 // Tap the big number to type the score instead of stepping (+/− stay available).
@@ -1639,6 +1681,7 @@ function editScoreTyped() {
       RE.round.scores[i] = v;
       persist();
       renderPlay();
+      pulseScore();
       armAutoAdvance();
     } else if (RE) renderPlay();
   };
